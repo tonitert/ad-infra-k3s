@@ -1,0 +1,12 @@
+credentials.tfvars
+ansible/keys/*
+!ansible/keys/.gitkeep
+keys/*
+!keys/.gitkeep
+.terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.tfplan.json
