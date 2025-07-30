@@ -1,0 +1,35 @@
+name: Create terraform plan
+
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    name: Create a plan for an terraform configuration
+    environment: hetzner-1
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: terraform plan
+        uses: dflook/terraform-plan@v2.1.0
+        with:
+          path: .
+          variables: |
+            hcloud_token=${{ secrets.HCLOUD_TOKEN }}
+          # free state hosting even on github :DD
+          backend_config: |
+            address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster
+            lock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock
+            unlock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock
+            username=token
+            password=${{ secrets.GITLAB_STATE_TOKEN }}
+            lock_method=POST
+            unlock_method=DELETE
+            retry_wait_min=5
