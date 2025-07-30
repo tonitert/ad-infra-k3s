@@ -1,6 +1,10 @@
 name: Create terraform plan
 
-on: [pull_request]
+on: 
+  pull_request:
+    types:
+      - opened
+      - reopened
 
 permissions:
   contents: read
