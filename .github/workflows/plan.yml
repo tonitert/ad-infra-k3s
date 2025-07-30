@@ -25,10 +25,11 @@ jobs:
         uses: dflook/terraform-plan@v2.1.0
         with:
           path: .
-          variables: |
+          variables: |+
             hcloud_token=${{ secrets.HCLOUD_TOKEN }}
+            
           # free state hosting even on github :DD
-          backend_config: |
+          backend_config: >
             address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster
             lock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock
             unlock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock
