@@ -8,12 +8,12 @@ spec:
   interval: 30m
   url: "https://github.com/tonitert/ad-infra-flux.git"
   ref:
-    branch: "main"
+    branch: "master"
   ignore: |
     # exclude all
     /*
     # include kubernetes directory
-    !/kubernetes
+    !/k3s/kubernetes
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -22,7 +22,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 30m
-  path: ./kubernetes/flux
+  path: ./k3s/kubernetes/flux
   prune: true
   wait: false
   sourceRef:
