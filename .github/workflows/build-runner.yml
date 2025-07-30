@@ -10,10 +10,10 @@ on:
   workflow_dispatch:
   push:
     branches: ["master"]
-    paths: ["Dockerfile"]
+    paths: ["Dockerfile", "github/workflows/build-runner.yml"]
   pull_request:
     branches: ["master"]
-    paths: ["Dockerfile"]
+    paths: ["Dockerfile", "github/workflows/build-runner.yml"]
 
 concurrency:
   cancel-in-progress: true
