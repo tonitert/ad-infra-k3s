@@ -5,6 +5,8 @@ on:
     types:
       - opened
       - reopened
+  workflow_dispatch:
+    
 
 permissions:
   contents: read
