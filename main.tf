@@ -46,6 +46,18 @@ resource "hcloud_ssh_key" "ad_server_ssh_key" {
     public_key = tls_private_key.ad_server_key.public_key_openssh
 }
 
+resource "local_file" "ad_server_ssh_key" {
+    content  = tls_private_key.ad_server_key.private_key_pem
+    filename = "${path.module}/keys/ad_server_ssh_key.pem"
+    file_permission = "0600"
+}
+
+resource "local_file" "ip_address" {
+    content  =  hcloud_primary_ip.primary_ip_ad_server.ip_address
+    filename = "${path.module}/ip_address.txt"
+    file_permission = "0644"
+}
+
 resource "hcloud_primary_ip" "primary_ip_ad_server" {
     name          = "primary_ip_ad_server"
     datacenter    = "hel1-dc2"
@@ -57,7 +69,7 @@ resource "hcloud_primary_ip" "primary_ip_ad_server" {
 resource "hcloud_server" "ad_server" {
     name        = "ad-server"
     image       = "debian-12"
-    server_type = "cax21"
+    server_type = "cax31"
     location    = "hel1"
     ssh_keys    = [ hcloud_ssh_key.ad_server_ssh_key.id ]
 
@@ -72,4 +84,25 @@ resource "hcloud_server" "ad_server" {
     }
 }
 
+resource "local_file" "ansible" {
+  content = yamlencode({
+    servers = {
+      hosts = {
+        ad_server = {
+          ansible_host = hcloud_server.ad_server.ipv4_address
+          ansible_user = "root"
+          ansible_ssh_private_key_file = local_file.ad_server_ssh_key.filename
+        }
+      }
+    }
+  })
 
+  filename = "${path.module}/ansible/inventory.yaml"
+  provisioner "local-exec" {
+    command = <<-EOT
+      ANSIBLE_HOST_KEY_CHECKING=False \
+      ansible-playbook -i ${local_file.ansible.filename} \
+      ansible/pre-server-setup-playbook.yaml
+    EOT
+  }
+}

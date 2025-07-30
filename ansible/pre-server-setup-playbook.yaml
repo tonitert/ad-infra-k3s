@@ -1,0 +1,32 @@
+- name: Setup server
+  hosts: servers
+  tasks:
+    - name: Add non-root user to the server
+      ansible.builtin.user:
+        name: "debian"
+        state: present
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        generate_ssh_key: true
+      register: user_creation
+
+    - name: Generate an OpenSSH keypair
+      community.crypto.openssh_keypair:
+        path: ../keys/user_ad_server_ssh_key
+      delegate_to: localhost
+      register: ad_server_key
+
+    - name: Copy SSH key
+      ansible.builtin.lineinfile:
+        path: /home/debian/.ssh/authorized_keys
+        line: "{{ ad_server_key.public_key }}"
+        create: yes
+    
+    - name: Make users passwordless for sudo in group sudo
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%sudo'
+        line: '%sudo ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'

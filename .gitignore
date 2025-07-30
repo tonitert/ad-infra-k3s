@@ -10,3 +10,4 @@ keys/*
 *.tfvars.json
 *.tfplan
 *.tfplan.json
+ip_address.txt
