@@ -1,41 +1,47 @@
-name: Create terraform plan
+name: Run terraform
 
 on: 
   pull_request:
-    types:
-      - opened
-      - reopened
-  workflow_dispatch:
-    
+  push:
+    branches: [main]
+  workflow_dispatch: 
 
 permissions:
-  contents: read
-  pull-requests: write
+  actions: read        # Required to identify workflow run.
+  checks: write        # Required to add status summary.
+  contents: read       # Required to checkout repository.
+  pull-requests: write # Required to add PR comment.
 
 jobs:
   plan:
     runs-on: ubuntu-latest
     name: Create a plan for an terraform configuration
     environment: hetzner-1
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: terraform plan
-        uses: dflook/terraform-plan@v2.1.0
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          path: .
-          variables: |+
-            hcloud_token=${{ secrets.HCLOUD_TOKEN }}
-
-          # free state hosting even on github :DD
-          backend_config: |+
-            address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster
-            lock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock
-            unlock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock
-            username=token
-            password=${{ secrets.GITLAB_STATE_TOKEN }}
-            lock_method=POST
-            unlock_method=DELETE
-            retry_wait_min=5
+          terraform_wrapper: false
+      - name: Write backend config
+        # free state hosting :D
+        run: |
+          echo 'address="https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster"' >> gitlab.tfbackend
+          echo 'lock_address="https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock"' >> gitlab.tfbackend
+          echo 'unlock_address="https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock"' >> gitlab.tfbackend
+          echo 'username="token"' >> gitlab.tfbackend
+          echo 'password="${{ secrets.GITLAB_STATE_TOKEN }}"' >> gitlab.tfbackend
+          echo 'lock_method="POST"' >> gitlab.tfbackend
+          echo 'unlock_method="DELETE"' >> gitlab.tfbackend
+          echo 'retry_wait_min="5"' >> gitlab.tfbackend
+          echo "" >> gitlab.tfbackend
+      - uses: op5dev/tf-via-pr@17a512ff6f2ec9f5ba7dc80ed26da4c49aa795fa # 13.6.0
+        with:
+          working-directory: ./
+          command: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
+          arg-lock: ${{ github.event_name == 'push' }}
+          arg-backend-config: gitlab.tfbackend
+          arg-var: hcloud_token=${{ secrets.HCLOUD_TOKEN }}
+          plan-encrypt: ${{ secrets.TF_VIA_PR_PASS }}
