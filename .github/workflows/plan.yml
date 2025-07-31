@@ -28,14 +28,15 @@ jobs:
       - name: Write backend config
         # free state hosting :D
         run: |
-          echo "address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster" >> gitlab.tfbackend
-          echo "lock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock" >> gitlab.tfbackend
-          echo "unlock_address=https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock" >> gitlab.tfbackend
-          echo "username=token" >> gitlab.tfbackend
-          echo "password=${{ secrets.GITLAB_STATE_TOKEN }}" >> gitlab.tfbackend
-          echo "lock_method=POST" >> gitlab.tfbackend
-          echo "unlock_method=DELETE" >> gitlab.tfbackend
-          echo "retry_wait_min=5" >> gitlab.tfbackend
+          echo "address='https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster'" >> gitlab.tfbackend
+          echo "lock_address='https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock'" >> gitlab.tfbackend
+          echo "unlock_address='https://gitlab.com/api/v4/projects/72135661/terraform/state/cluster/lock'" >> gitlab.tfbackend
+          echo "username='token'" >> gitlab.tfbackend
+          echo "password='${{ secrets.GITLAB_STATE_TOKEN }}'" >> gitlab.tfbackend
+          echo "lock_method='POST'" >> gitlab.tfbackend
+          echo "unlock_method='DELETE'" >> gitlab.tfbackend
+          echo "retry_wait_min='5'" >> gitlab.tfbackend
+          echo "" >> gitlab.tfbackend
       - uses: op5dev/tf-via-pr@17a512ff6f2ec9f5ba7dc80ed26da4c49aa795fa # 13.6.0
         with:
           working-directory: ./
