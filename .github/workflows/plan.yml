@@ -15,6 +15,9 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    permissions: 
+      contents: read
+      pull-requests: write
     name: Create a plan for an terraform configuration
     environment: hetzner-1
     steps:
