@@ -43,4 +43,5 @@ jobs:
           command: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
           arg-lock: ${{ github.event_name == 'push' }}
           arg-backend-config: gitlab.tfbackend
+          arg-var: hcloud_token=${{ secrets.HCLOUD_TOKEN }}
           plan-encrypt: ${{ secrets.TF_VIA_PR_PASS }}
