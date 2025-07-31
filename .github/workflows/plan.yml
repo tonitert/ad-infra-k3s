@@ -11,6 +11,7 @@ permissions:
   checks: write        # Required to add status summary.
   contents: read       # Required to checkout repository.
   pull-requests: write # Required to add PR comment.
+  issues: write        # Required to add issue comment.
 
 jobs:
   plan:
