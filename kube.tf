@@ -1186,4 +1186,5 @@ variable "hcloud_token" {
 variable "ssh_key_path" {
   description = "Path to the SSH key to use"
   type        = string
+  default     = ""
 }
