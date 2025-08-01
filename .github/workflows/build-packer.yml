@@ -1,0 +1,33 @@
+name: Build templates
+
+on: 
+  workflow_dispatch: 
+
+jobs:
+  packer:
+    runs-on: ubuntu-latest
+    name: Build Packer templates
+    environment: hetzner-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup `packer`
+        uses: hashicorp/setup-packer@main
+        id: setup
+        with:
+          version: 1.14.0
+      
+      - name: Run `packer init`
+        id: init
+        run: "packer init hcloud-microos-snapshots.pkr.hcl"
+
+      - name: Run `packer validate`
+        id: validate
+        run: "packer validate hcloud-microos-snapshots.pkr.hcl"
+      
+      - name: Run `packer build`
+        id: build
+        run: "packer build hcloud-microos-snapshots.pkr.hcl"
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}

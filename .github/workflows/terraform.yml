@@ -16,7 +16,6 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     name: Create a plan for an terraform configuration
-    environment: hetzner-1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +24,12 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
+      - name: Write ssh keys to file
+        run: |
+          mkdir -p ./keys/
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ./keys/ssh
+          chmod 600 ./keys/ssh
+          echo "${{ secrets.SSH_PUBLIC_KEY }}" > ./keys/ssh.pub
       - name: Write backend config
         # free state hosting :D
         run: |
