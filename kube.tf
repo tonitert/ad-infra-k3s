@@ -21,7 +21,7 @@ module "kube-hetzner" {
   source = "kube-hetzner/kube-hetzner/hcloud"
   #    When using the terraform registry as source, you can optionally specify a version number.
   #    See https://registry.terraform.io/modules/kube-hetzner/kube-hetzner/hcloud for the available versions
-  # version = "2.15.3"
+  version = "2.18.0"
   # 2. For local dev, path to the git repo
   # source = "../../kube-hetzner/"
   # 3. If you want to use the latest master branch (see https://developer.hashicorp.com/terraform/language/modules/sources#github), use
@@ -35,12 +35,12 @@ module "kube-hetzner" {
   # ssh_port = 2222
 
   # * Your ssh public key
-  ssh_public_key = file("~/.ssh/id_ed25519.pub")
+  ssh_public_key = file(var.ssh_key_path != "" ? "${var.ssh_key_path}.pub" : "./keys/ssh")
   # * Your private key must be "ssh_private_key = null" when you want to use ssh-agent for a Yubikey-like device authentication or an SSH key-pair with a passphrase.
   # For more details on SSH see https://github.com/kube-hetzner/kube-hetzner/blob/master/docs/ssh.md
-  ssh_private_key = file("~/.ssh/id_ed25519")
+  ssh_private_key = file(var.ssh_key_path != "" ? var.ssh_key_path : "./keys/ssh")
   # You can add additional SSH public Keys to grant other team members root access to your cluster nodes.
-  # ssh_additional_public_keys = []
+  ssh_additional_public_keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPxx9gWelsnyCU+WJ95XovyNPgr3TYrByhOr54kl5ukV tonit@tonipc" ]
 
   # You can also add additional SSH public Keys which are saved in the hetzner cloud by a label.
   # See https://docs.hetzner.cloud/#label-selector
@@ -121,49 +121,6 @@ module "kube-hetzner" {
 
   control_plane_nodepools = [
     {
-      name        = "control-plane-fsn1",
-      server_type = "cx22",
-      location    = "fsn1",
-      labels      = [],
-      taints      = [],
-      count       = 1
-      # swap_size   = "2G" # remember to add the suffix, examples: 512M, 1G
-      # zram_size   = "2G" # remember to add the suffix, examples: 512M, 1G
-      # kubelet_args = ["kube-reserved=cpu=250m,memory=1500Mi,ephemeral-storage=1Gi", "system-reserved=cpu=250m,memory=300Mi"]
-
-      # Fine-grained control over placement groups (nodes in the same group are spread over different physical servers, 10 nodes per placement group max):
-      # placement_group = "default"
-
-      # Enable automatic backups via Hetzner (default: false)
-      # backups = true
-
-      # To disable public ips (default: false)
-      # WARNING: If both values are set to "true", your server will only be accessible via a private network. Make sure you have followed
-      # the instructions regarding this type of setup in README.md: "Use only private IPs in your cluster".
-      # disable_ipv4 = true
-      # disable_ipv6 = true
-    },
-    {
-      name        = "control-plane-nbg1",
-      server_type = "cx22",
-      location    = "nbg1",
-      labels      = [],
-      taints      = [],
-      count       = 1
-
-      # Fine-grained control over placement groups (nodes in the same group are spread over different physical servers, 10 nodes per placement group max):
-      # placement_group = "default"
-
-      # Enable automatic backups via Hetzner (default: false)
-      # backups = true
-
-      # To disable public ips (default: false)
-      # WARNING: If both values are set to "true", your server will only be accessible via a private network. Make sure you have followed
-      # the instructions regarding this type of setup in README.md: "Use only private IPs in your cluster".
-      # disable_ipv4 = true
-      # disable_ipv6 = true
-    },
-    {
       name        = "control-plane-hel1",
       server_type = "cx22",
       location    = "hel1",
@@ -189,10 +146,10 @@ module "kube-hetzner" {
     {
       name        = "agent-small",
       server_type = "cx22",
-      location    = "fsn1",
+      location    = "hel1",
       labels      = [],
       taints      = [],
-      count       = 1
+      count       = 0
       # swap_size   = "2G" # remember to add the suffix, examples: 512M, 1G
       # zram_size   = "2G" # remember to add the suffix, examples: 512M, 1G
       # kubelet_args = ["kube-reserved=cpu=50m,memory=300Mi,ephemeral-storage=1Gi", "system-reserved=cpu=250m,memory=300Mi"]
@@ -203,91 +160,77 @@ module "kube-hetzner" {
       # Enable automatic backups via Hetzner (default: false)
       # backups = true
     },
-    {
-      name        = "agent-large",
-      server_type = "cx32",
-      location    = "nbg1",
-      labels      = [],
-      taints      = [],
-      count       = 1
+    #{
+    #  name        = "storage",
+    #  server_type = "cx32",
+    #  location    = "fsn1",
+    #  # Fully optional, just a demo.
+    #  labels      = [
+    #    "node.kubernetes.io/server-usage=storage"
+    #  ],
+    #  taints      = [],
+    #  count       = 1
 
-      # Fine-grained control over placement groups (nodes in the same group are spread over different physical servers, 10 nodes per placement group max):
-      # placement_group = "default"
+    #  # In the case of using Longhorn, you can use Hetzner volumes instead of using the node's own storage by specifying a value from 10 to 10240 (in GB)
+    #  # It will create one volume per node in the nodepool, and configure Longhorn to use them.
+    #  # Something worth noting is that Volume storage is slower than node storage, which is achieved by not mentioning longhorn_volume_size or setting it to 0.
+    #  # So for something like DBs, you definitely want node storage, for other things like backups, volume storage is fine, and cheaper.
+    #  # longhorn_volume_size = 20
 
-      # Enable automatic backups via Hetzner (default: false)
-      # backups = true
-    },
-    {
-      name        = "storage",
-      server_type = "cx32",
-      location    = "fsn1",
-      # Fully optional, just a demo.
-      labels      = [
-        "node.kubernetes.io/server-usage=storage"
-      ],
-      taints      = [],
-      count       = 1
-
-      # In the case of using Longhorn, you can use Hetzner volumes instead of using the node's own storage by specifying a value from 10 to 10240 (in GB)
-      # It will create one volume per node in the nodepool, and configure Longhorn to use them.
-      # Something worth noting is that Volume storage is slower than node storage, which is achieved by not mentioning longhorn_volume_size or setting it to 0.
-      # So for something like DBs, you definitely want node storage, for other things like backups, volume storage is fine, and cheaper.
-      # longhorn_volume_size = 20
-
-      # Enable automatic backups via Hetzner (default: false)
-      # backups = true
-    },
+    #  # Enable automatic backups via Hetzner (default: false)
+    #  # backups = true
+    #},
     # Egress nodepool useful to route egress traffic using Hetzner Floating IPs (https://docs.hetzner.com/cloud/floating-ips)
     # used with Cilium's Egress Gateway feature https://docs.cilium.io/en/stable/gettingstarted/egress-gateway/
     # See the https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner#examples for an example use case.
-    {
-      name        = "egress",
-      server_type = "cx22",
-      location    = "fsn1",
-      labels = [
-        "node.kubernetes.io/role=egress"
-      ],
-      taints = [
-        "node.kubernetes.io/role=egress:NoSchedule"
-      ],
-      floating_ip = true
-      # Optionally associate a reverse DNS entry with the floating IP(s).
-      # This is useful in combination with the Egress Gateway feature for hosting certain services in the cluster, such as email servers.
-      # floating_ip_rns = "my.domain.com"
-      count = 1
-    },
+    # {
+    #   name        = "egress",
+    #   server_type = "cx22",
+    #   location    = "fsn1",
+    #   labels = [
+    #     "node.kubernetes.io/role=egress"
+    #   ],
+    #   taints = [
+    #     "node.kubernetes.io/role=egress:NoSchedule"
+    #   ],
+    #   floating_ip = true
+    #   # Optionally associate a reverse DNS entry with the floating IP(s).
+    #   # This is useful in combination with the Egress Gateway feature for hosting certain services in the cluster, such as email servers.
+    #   # floating_ip_rns = "my.domain.com"
+    #   count = 1
+    # },
     # Arm based nodes
-    {
-      name        = "agent-arm-small",
-      server_type = "cax11",
-      location    = "fsn1",
-      labels      = [],
-      taints      = [],
-      count       = 1
-    },
+    # {
+    #   name        = "agent-arm-small",
+    #   server_type = "cax11",
+    #   location    = "fsn1",
+    #   labels      = [],
+    #   taints      = [],
+    #   count       = 1
+    # },
     # For fine-grained control over the nodes in a node pool, replace the count variable with a nodes map.
     # In this case, the node-pool variables are defaults which can be overridden on a per-node basis.
     # Each key in the nodes map refers to a single node and must be an integer string ("1", "123", ...).
-    {
-      name        = "agent-arm-medium",
-      server_type = "cax21",
-      location    = "fsn1",
-      labels      = [],
-      taints      = [],
-      nodes = {
-        "1" : {
-          location                  = "nbg1"
-          labels = [
-            "testing-labels=a1",
-          ]
-        },
-        "20" : {
-          labels = [
-            "testing-labels=b1",
-          ]
-        }
-      }
-    },
+    # {
+    #   name        = "agent-arm-medium",
+    #   server_type = "cax21",
+    #   location    = "fsn1",
+    #   labels      = [],
+    #   taints      = [],
+    #   nodes = {
+    #     "1" : {
+    #       location                  = "nbg1"
+    #       labels = [
+    #         "testing-labels=a1",
+    #       ]
+    #     },
+    #     "20" : {
+    #       labels = [
+    #         "testing-labels=b1",
+    #       ]
+    #     }
+    #   }
+    # },
   ]
   # Add additional configuration options for control planes here.
   # E.g to enable monitoring for etcd, proxy etc:
@@ -313,7 +256,7 @@ module "kube-hetzner" {
 
   # * LB location and type, the latter will depend on how much load you want it to handle, see https://www.hetzner.com/cloud/load-balancer
   load_balancer_type     = "lb11"
-  load_balancer_location = "fsn1"
+  load_balancer_location = "hel1"
 
   # Disable IPv6 for the load balancer, the default is false.
   # load_balancer_disable_ipv6 = true
@@ -363,26 +306,26 @@ module "kube-hetzner" {
   # ⚠️ Setting labels and taints will only work on cluster-autoscaler images versions released after > 20 October 2023. Or images built from master after that date.
   #
   # * Example below:
-  # autoscaler_nodepools = [
-  #  {
-  #    name        = "autoscaled-small"
-  #    server_type = "cx32"
-  #    location    = "fsn1"
-  #    min_nodes   = 0
-  #    max_nodes   = 5
-  #    labels      = {
-  #      "node.kubernetes.io/role": "peak-workloads"
-  #    }
-  #    taints      = [
-  #      {
-  #       key= "node.kubernetes.io/role"
-  #       value= "peak-workloads"
-  #       effect= "NoExecute"
-  #      }
-  #    ]
-  #    # kubelet_args = ["kube-reserved=cpu=250m,memory=1500Mi,ephemeral-storage=1Gi", "system-reserved=cpu=250m,memory=300Mi"]
-  #  }
-  # ]
+  autoscaler_nodepools = [
+   {
+     name        = "autoscaled-small"
+     server_type = "cx32"
+     location    = "hel1"
+     min_nodes   = 0
+     max_nodes   = 2
+     labels      = {
+       "node.kubernetes.io/role": "peak-workloads"
+     }
+     taints      = [
+       {
+        key= "node.kubernetes.io/role"
+        value= "peak-workloads"
+        effect= "NoExecute"
+       }
+     ]
+     # kubelet_args = ["kube-reserved=cpu=250m,memory=1500Mi,ephemeral-storage=1Gi", "system-reserved=cpu=250m,memory=300Mi"]
+   }
+  ]
   #
   # To disable public ips on your autoscaled nodes, uncomment the following lines:
   # autoscaler_disable_ipv4 = true
@@ -623,7 +566,7 @@ module "kube-hetzner" {
   # For production use, always use an HA setup with at least 3 control-plane nodes and 2 agents, and keep this on for maximum security.
 
   # The default is "true" (in HA setup i.e. at least 3 control plane nodes & 2 agents, just keep it enabled since it works flawlessly).
-  # automatically_upgrade_k3s = false
+  automatically_upgrade_k3s = false
 
   # By default nodes are drained before k3s upgrade, which will delete and transfer all pods to other nodes.
   # Set this to false to cordon nodes instead, which just prevents scheduling new pods on the node during upgrade
@@ -964,7 +907,7 @@ module "kube-hetzner" {
   # See https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/issues/349
   # When "false". The kubeconfig file can instead be created by executing: "terraform output --raw kubeconfig > cluster_kubeconfig.yaml"
   # Always be careful to not commit this file!
-  # create_kubeconfig = false
+  create_kubeconfig = false
 
   # Don't create the kustomize backup. This can be helpful for automation.
   # create_kustomization = false
@@ -1031,7 +974,7 @@ cainjector:
   # We advise you to not touch this and to let the defaults that are already set under the hood.
   # For advanced use cases like adding Hetzner Robot servers, see: https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/blob/master/docs/add-robot-server.md
   # The following is an example, please note that the current indentation inside the EOT is important.
-  /*   hetzner_ccm_values = <<EOT
+hetzner_ccm_values = <<EOT
 networking:
   enabled: true
 args:
@@ -1041,14 +984,14 @@ args:
   webhook-secure-port: "0"
 env:
   HCLOUD_LOAD_BALANCERS_LOCATION:
-    value: "fsn1"
+    value: "hel1"
   HCLOUD_LOAD_BALANCERS_USE_PRIVATE_IP:
     value: "true"
   HCLOUD_LOAD_BALANCERS_ENABLED:
     value: "true"
   HCLOUD_LOAD_BALANCERS_DISABLE_PRIVATE_INGRESS:
     value: "true"
-  EOT */
+  EOT
 
   # csi-driver-smb, all csi-driver-smb helm values can be found at https://github.com/kubernetes-csi/csi-driver-smb/blob/master/charts/latest/csi-driver-smb/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
@@ -1238,4 +1181,9 @@ output "kubeconfig" {
 variable "hcloud_token" {
   sensitive = true
   default   = ""
+}
+
+variable "ssh_key_path" {
+  description = "Path to the SSH key to use"
+  type        = string
 }
