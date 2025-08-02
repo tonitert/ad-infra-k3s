@@ -49,7 +49,7 @@ jobs:
           echo '' >> vars.tfvars
       
       - name: Logout
-        run: gh auth logput
+        run: gh auth logout
       - uses: op5dev/tf-via-pr@17a512ff6f2ec9f5ba7dc80ed26da4c49aa795fa # 13.6.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
