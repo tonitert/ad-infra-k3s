@@ -1,10 +1,5 @@
-variable "github_token" {
-  sensitive = true
-}
-
 provider "github" {
-  token = null
-  
+
 }
 
 data "github_release" "hetzner_ccm" {

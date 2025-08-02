@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Create a plan for an terraform configuration
     env:
+      # The github terraform provider seems to use the runner gh token if this is not set, which causes the terraform to fail due to missing perms
       GH_PATH: /nonexistent/gh
     steps:
       - name: Checkout

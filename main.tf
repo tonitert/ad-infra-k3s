@@ -9,18 +9,5 @@ terraform {
         source  = "hetznercloud/hcloud"
         version = ">= 1.51.0"
       }
-      github = {
-          source = "integrations/github"
-          version = "~> 5.44.0"
-      }
-
     }
-}
-
-# Fix problem with GitHub Actions
-provider "github" {
-}
-
-variable "github_token" {
-    sensitive = true
 }
