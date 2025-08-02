@@ -19,7 +19,7 @@ terraform {
 
 # Fix problem with GitHub Actions
 provider "github" {
-    token = var.github_token
+    token = null
 }
 
 variable "github_token" {

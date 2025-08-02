@@ -3,7 +3,7 @@ terraform {
   required_providers {
     github = {
       source  = "integrations/github"
-      version = ">= 6.4.0"
+      version = "~> 5.44.0"
     }
     hcloud = {
       source  = "hetznercloud/hcloud"
