@@ -6,7 +6,11 @@ on:
     branches: [master]
   workflow_dispatch: 
 
-permissions: write-all
+permissions:
+  actions: read        # Required to identify workflow run.
+  checks: write        # Required to add status summary.
+  contents: read       # Required to checkout repository.
+  pull-requests: write # Required to add PR comment.
 
 jobs:
   plan:
