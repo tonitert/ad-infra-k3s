@@ -1,5 +1,9 @@
+variable "github_token" {
+  sensitive = true
+}
+
 provider "github" {
-  
+  token = var.github_token
 }
 
 data "github_release" "hetzner_ccm" {

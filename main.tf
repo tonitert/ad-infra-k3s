@@ -23,5 +23,4 @@ provider "github" {
 
 variable "github_token" {
     sensitive = true
-    default = null
 }
