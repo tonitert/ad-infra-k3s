@@ -3,7 +3,8 @@ variable "github_token" {
 }
 
 provider "github" {
-  token = var.github_token
+  token = null
+  
 }
 
 data "github_release" "hetzner_ccm" {

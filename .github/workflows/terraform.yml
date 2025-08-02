@@ -47,8 +47,12 @@ jobs:
           echo 'github_token="${{ secrets.GITHUB_TOKEN }}"' >> vars.tfvars
           echo 'hcloud_token="${{ secrets.HCLOUD_TOKEN }}"' >> vars.tfvars
           echo '' >> vars.tfvars
+      
+      - name: Logout
+        run: gh auth logput
       - uses: op5dev/tf-via-pr@17a512ff6f2ec9f5ba7dc80ed26da4c49aa795fa # 13.6.0
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: ./
           command: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
           arg-lock: ${{ github.event_name == 'push' }}
