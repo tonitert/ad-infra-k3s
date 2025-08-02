@@ -16,6 +16,9 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     name: Create a plan for an terraform configuration
+    env:
+      # The github terraform provider seems to use the runner gh token if this is not set, which causes the terraform to fail due to missing perms
+      GH_PATH: /nonexistent/gh
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,11 +45,18 @@ jobs:
           echo 'unlock_method="DELETE"' >> gitlab.tfbackend
           echo 'retry_wait_min="5"' >> gitlab.tfbackend
           echo "" >> gitlab.tfbackend
+      - name: Write var config
+        run: |
+          echo 'github_token="${{ secrets.GITHUB_TOKEN }}"' >> vars.tfvars
+          echo 'hcloud_token="${{ secrets.HCLOUD_TOKEN }}"' >> vars.tfvars
+          echo '' >> vars.tfvars
+      
       - uses: op5dev/tf-via-pr@17a512ff6f2ec9f5ba7dc80ed26da4c49aa795fa # 13.6.0
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: ./
           command: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
           arg-lock: ${{ github.event_name == 'push' }}
           arg-backend-config: gitlab.tfbackend
-          arg-var: hcloud_token=${{ secrets.HCLOUD_TOKEN }}
+          arg-var-file: ./vars.tfvars
           plan-encrypt: ${{ secrets.TF_VIA_PR_PASS }}
