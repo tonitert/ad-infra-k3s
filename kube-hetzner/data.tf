@@ -1,7 +1,3 @@
-provider "github" {
-
-}
-
 data "github_release" "hetzner_ccm" {
   count       = var.hetzner_ccm_version == null ? 1 : 0
   repository  = "hcloud-cloud-controller-manager"
