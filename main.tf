@@ -1,5 +1,11 @@
 terraform {
   backend "http" {}
+  required_providers {
+    github = {
+        source = "integrations/github"
+        version = "6.6.0"
+    }
+  }
 }
 
 # Fix problem with GitHub Actions
