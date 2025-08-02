@@ -10,7 +10,6 @@ locals {
 module "kube-hetzner" {
   providers = {
     hcloud = hcloud
-    github = github
   }
   hcloud_token = var.hcloud_token != "" ? var.hcloud_token : local.hcloud_token
 
