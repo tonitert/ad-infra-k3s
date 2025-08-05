@@ -1,0 +1,8 @@
+name: argo-sync
+description: Configure argocd synchronization
+version: 1.0.0
+apiVersion: v2
+keywords:
+  - argo
+sources: []
+dependencies: []

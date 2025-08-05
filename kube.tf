@@ -126,7 +126,7 @@ module "kube-hetzner" {
       location    = "hel1",
       labels      = [],
       taints      = [],
-      count       = 1
+      count       = 3
 
       # Fine-grained control over placement groups (nodes in the same group are spread over different physical servers, 10 nodes per placement group max):
       # placement_group = "default"
@@ -485,7 +485,7 @@ module "kube-hetzner" {
   # Automatically "true" in the case of single node cluster (as it does not make sense to use the Hetzner LB in that situation).
   # It can work with any ingress controller that you choose to deploy.
   # Please note that because the klipperLB points to all nodes, we automatically allow scheduling on the control plane when it is active.
-  # enable_klipper_metal_lb = "true"
+  enable_klipper_metal_lb = "true"
 
   # If you want to configure additional arguments for traefik, enter them here as a list and in the form of traefik CLI arguments; see https://doc.traefik.io/traefik/reference/static-configuration/cli/
   # They are the options that go into the additionalArguments section of the Traefik helm values file.
@@ -558,7 +558,7 @@ module "kube-hetzner" {
 
   # If you want to allow non-control-plane workloads to run on the control-plane nodes, set this to "true". The default is "false".
   # True by default for single node clusters, and when enable_klipper_metal_lb is true. In those cases, the value below will be ignored.
-  # allow_scheduling_on_control_plane = true
+  allow_scheduling_on_control_plane = true
 
   # If you want to disable the automatic upgrade of k3s, you can set below to "false".
   # Ideally, keep it on, to always have the latest Kubernetes version, but lock the initial_k3s_channel to a kube major version,
@@ -566,7 +566,7 @@ module "kube-hetzner" {
   # For production use, always use an HA setup with at least 3 control-plane nodes and 2 agents, and keep this on for maximum security.
 
   # The default is "true" (in HA setup i.e. at least 3 control plane nodes & 2 agents, just keep it enabled since it works flawlessly).
-  automatically_upgrade_k3s = false
+  automatically_upgrade_k3s = true
 
   # By default nodes are drained before k3s upgrade, which will delete and transfer all pods to other nodes.
   # Set this to false to cordon nodes instead, which just prevents scheduling new pods on the node during upgrade
@@ -609,7 +609,7 @@ module "kube-hetzner" {
   # ⚠️ If you are going to use Rancher addons for instance, it's always a good idea to fix the kube version to one minor version below the latest stable,
   #     e.g. v1.29 instead of the stable v1.30.
   # The default is "v1.30".
-  # initial_k3s_channel = "stable"
+  initial_k3s_channel = "v1.33"
 
   # Allows to specify the version of the System Upgrade Controller for automated upgrades of k3s
   # See https://github.com/rancher/system-upgrade-controller/releases for the available versions.
@@ -899,7 +899,9 @@ module "kube-hetzner" {
   # extra_kustomize_deployment_commands=""
 
   # Extra values that will be passed to the `extra-manifests/kustomization.yaml.tpl` if its present.
-  # extra_kustomize_parameters={}
+  extra_kustomize_parameters = {
+    repo_url = var.repo_url
+  }
 
   # See working examples for extra manifests or a HelmChart in examples/kustomization_user_deploy/README.md
 
@@ -974,24 +976,24 @@ cainjector:
   # We advise you to not touch this and to let the defaults that are already set under the hood.
   # For advanced use cases like adding Hetzner Robot servers, see: https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/blob/master/docs/add-robot-server.md
   # The following is an example, please note that the current indentation inside the EOT is important.
-hetzner_ccm_values = <<EOT
-networking:
-  enabled: true
-args:
-  cloud-provider: hcloud
-  allow-untagged-cloud: ""
-  route-reconciliation-period: 30s
-  webhook-secure-port: "0"
-env:
-  HCLOUD_LOAD_BALANCERS_LOCATION:
-    value: "hel1"
-  HCLOUD_LOAD_BALANCERS_USE_PRIVATE_IP:
-    value: "true"
-  HCLOUD_LOAD_BALANCERS_ENABLED:
-    value: "true"
-  HCLOUD_LOAD_BALANCERS_DISABLE_PRIVATE_INGRESS:
-    value: "true"
-  EOT
+# hetzner_ccm_values = <<EOT
+# networking:
+#   enabled: true
+# args:
+#   cloud-provider: hcloud
+#   allow-untagged-cloud: ""
+#   route-reconciliation-period: 30s
+#   webhook-secure-port: "0"
+# env:
+#   HCLOUD_LOAD_BALANCERS_LOCATION:
+#     value: "hel1"
+#   HCLOUD_LOAD_BALANCERS_USE_PRIVATE_IP:
+#     value: "true"
+#   HCLOUD_LOAD_BALANCERS_ENABLED:
+#     value: "true"
+#   HCLOUD_LOAD_BALANCERS_DISABLE_PRIVATE_INGRESS:
+#     value: "true"
+#   EOT
 
   # csi-driver-smb, all csi-driver-smb helm values can be found at https://github.com/kubernetes-csi/csi-driver-smb/blob/master/charts/latest/csi-driver-smb/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
@@ -1177,4 +1179,10 @@ variable "ssh_key_path" {
   description = "Path to the SSH key to use"
   type        = string
   default     = ""
+}
+
+variable "repo_url" {
+  description = "Repo url"
+  type        = string
+  default     = "https://github.com/tonitert/ad-infra-k3s"
 }
