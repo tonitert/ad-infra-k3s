@@ -1,0 +1,12 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ctfnote
+spec:
+  project: ctfnote
+  source:
+    path: argo/ctfnote/
+    repoURL: '{{ .Values.repoUrl }}'
+    targetRevision: HEAD
+  destination:
+    namespace: ctfnote

@@ -12,3 +12,6 @@ keys/*
 *.tfplan.json
 ip_address.txt
 local_override.tf
+clustername_kubeconfig.yaml
+*kubeconfig.yaml
+k3s_kustomization_backup.yaml
