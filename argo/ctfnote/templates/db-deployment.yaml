@@ -33,6 +33,8 @@ spec:
                   key: db-user-password
             - name: POSTGRES_USER
               value: ctfnote
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           image: ghcr.io/tfns/ctfnote/db:latest
           name: db
           volumeMounts:
