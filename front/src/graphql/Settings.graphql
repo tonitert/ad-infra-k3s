@@ -1,0 +1,47 @@
+fragment SettingsInfo on Setting {
+  nodeId
+  registrationAllowed
+  registrationPasswordAllowed
+  style
+  discordIntegrationEnabled
+}
+
+fragment AdminSettingsInfo on Setting {
+  nodeId
+  ...SettingsInfo
+  registrationPassword
+  registrationDefaultRole
+  icalPassword
+}
+
+query getSettings {
+  settings {
+    nodes {
+      ...SettingsInfo
+    }
+  }
+}
+
+query getIcalPassword {
+  settings {
+    nodes {
+      nodeId
+      icalPassword
+    }
+  }
+}
+
+query getAdminSettings {
+  settings {
+    nodes {
+      ...AdminSettingsInfo
+    }
+  }
+}
+mutation updateSettings($nodeId: ID!, $patch: SettingPatch!) {
+  updateSettingByNodeId(input: { nodeId: $nodeId, patch: $patch }) {
+    setting {
+      ...AdminSettingsInfo
+    }
+  }
+}
