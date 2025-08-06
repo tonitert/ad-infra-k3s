@@ -3,7 +3,7 @@ kind: Application
 metadata:
   name: ctfnote
 spec:
-  project: ctfnote
+  project: default
   source:
     path: argo/ctfnote/
     repoURL: '{{ .Values.repoUrl }}'
