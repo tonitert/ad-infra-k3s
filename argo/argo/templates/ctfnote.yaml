@@ -10,3 +10,4 @@ spec:
     targetRevision: HEAD
   destination:
     namespace: ctfnote
+    server: "https://kubernetes.default.svc"
