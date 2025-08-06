@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -c
+    kompose.version: 1.36.0 (ae2a39403)
+  labels:
+    io.kompose.service: hedgedoc
+  name: hedgedoc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: hedgedoc
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -c
+        kompose.version: 1.36.0 (ae2a39403)
+      labels:
+        io.kompose.service: hedgedoc
+    spec:
+      containers:
+        - env:
+            - name: CMD_CSP_ENABLE
+              value: "false"
+            - name: CMD_DB_URL
+              value: postgres://ctfnote@db:5432/hedgedoc
+            - name: CMD_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ctfnote-secrets
+                  key: db-user-pass
+            - name: CMD_DOCUMENT_MAX_LENGTH
+              value: "100000"
+            - name: CMD_IMAGE_UPLOAD_TYPE
+              value: filesystem
+            - name: CMD_RATE_LIMIT_NEW_NOTES
+              value: "0"
+            - name: CMD_URL_PATH
+              value: pad
+          image: quay.io/hedgedoc/hedgedoc:1.10.3
+          name: hedgedoc
+          volumeMounts:
+            - mountPath: /hedgedoc/public/uploads
+              name: pad-uploads
+      restartPolicy: Always
+      volumes:
+        - name: pad-uploads
+          persistentVolumeClaim:
+            claimName: pad-uploads

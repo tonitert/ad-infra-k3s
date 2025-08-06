@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -c
+    kompose.version: 1.36.0 (ae2a39403)
+  labels:
+    io.kompose.service: api
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: api
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -c
+        kompose.version: 1.36.0 (ae2a39403)
+      labels:
+        io.kompose.service: api
+    spec:
+      containers:
+        - env:
+          - name: CMD_DOCUMENT_MAX_LENGTH
+            value: "100000"
+          - name: CMD_DOMAIN
+          - name: CMD_PROTOCOL_USESSL
+            value: "false"
+          - name: DB_ADMIN_LOGIN
+            value: ctfnote
+          - name: DB_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ctfnote-secrets
+                key: db-admin-pass
+          - name: DB_DATABASE
+            value: ctfnote
+          - name: DB_HOST
+            value: db
+          - name: DB_PORT
+            value: "5432"
+          - name: DB_USER_LOGIN
+            value: user_postgraphile
+          - name: DB_USER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ctfnote-secrets
+                key: db-user-pass
+          - name: DISCORD_BOT_TOKEN
+            value: bot_token
+          - name: DISCORD_REGISTRATION_CTFNOTE_ROLE
+          - name: DISCORD_REGISTRATION_ENABLED
+            value: "false"
+          - name: DISCORD_REGISTRATION_ROLE_ID
+          - name: DISCORD_SERVER_ID
+            value: server_id
+          - name: DISCORD_VOICE_CHANNELS
+            value: "3"
+          - name: LC_ALL
+            value: en_US.UTF-8
+          - name: PAD_CREATE_URL
+            value: http://hedgedoc:3000/new
+          - name: PAD_SHOW_URL
+            value: /
+          - name: SESSION_SECRET
+          - name: TZ
+            value: UTC
+          - name: USE_DISCORD
+            value: "false"
+          - name: WEB_PORT
+            value: "3000"
+          image: ghcr.io/tfns/ctfnote/api:latest
+          name: api
+          resources:
+            limits:
+              memory: "500m"
+              cpu: "750m"
+          volumeMounts:
+            - mountPath: /app/uploads
+              name: ctfnote-uploads
+      restartPolicy: Always
+      volumes:
+        - name: ctfnote-uploads
+          persistentVolumeClaim:
+            claimName: ctfnote-uploads
