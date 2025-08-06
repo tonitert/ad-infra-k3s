@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cluster-pv-csi
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 10G
+  hostPath:
+    path: "/mnt/data/ckan"
