@@ -5,9 +5,14 @@ metadata:
 spec:
   project: default
   source:
-    path: argo/ctfnote/
+    path: argo/ctfnote
     repoURL: '{{ .Values.repoUrl }}'
     targetRevision: HEAD
   destination:
     namespace: ctfnote
     server: "https://kubernetes.default.svc"
+  syncPolicy:
+    syncOptions:
+      CreateNamespace=true
+    automated:
+      prune: true
