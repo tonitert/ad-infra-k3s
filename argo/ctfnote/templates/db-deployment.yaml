@@ -30,7 +30,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: ctfnote-secrets
-                  key: db-user-pass
+                  key: db-user-password
             - name: POSTGRES_USER
               value: ctfnote
           image: ghcr.io/tfns/ctfnote/db:latest

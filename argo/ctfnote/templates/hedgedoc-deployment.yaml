@@ -32,7 +32,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: ctfnote-secrets
-                  key: db-user-pass
+                  key: db-user-password
             - name: CMD_DOCUMENT_MAX_LENGTH
               value: "100000"
             - name: CMD_IMAGE_UPLOAD_TYPE

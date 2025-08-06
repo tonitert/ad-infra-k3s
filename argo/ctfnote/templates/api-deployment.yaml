@@ -35,7 +35,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: ctfnote-secrets
-                key: db-admin-pass
+                key: db-admin-password
           - name: DB_DATABASE
             value: ctfnote
           - name: DB_HOST
@@ -48,7 +48,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: ctfnote-secrets
-                key: db-user-pass
+                key: db-user-password
           - name: DISCORD_BOT_TOKEN
             value: bot_token
           - name: DISCORD_REGISTRATION_CTFNOTE_ROLE
