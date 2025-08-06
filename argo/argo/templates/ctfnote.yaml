@@ -7,7 +7,7 @@ spec:
   source:
     path: argo/ctfnote
     repoURL: '{{ .Values.repoUrl }}'
-    targetRevision: HEAD
+    targetRevision: "feat/add-ctfnote"
   destination:
     namespace: ctfnote
     server: "https://kubernetes.default.svc"
