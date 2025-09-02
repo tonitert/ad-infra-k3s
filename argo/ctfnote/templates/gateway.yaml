@@ -15,15 +15,9 @@ spec:
         namespaces:
           from: Same 
 
-    # - name: https
-    #   protocol: HTTPS
-    #   port: 443
-    #   tls:
-    #     mode: Terminate
-    #     certificateRefs:
-    #       - name: secret-tls
-    #         namespace: default
-# 
-    #   allowedRoutes:
-    #     namespaces:
-    #       from: Same
+    - name: https
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: Same
