@@ -1,0 +1,88 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ctfnote-http
+  namespace: default
+spec:
+  parentRefs:
+    - name: traefik
+      sectionName: http
+      kind: Gateway
+
+  hostnames:
+    - ctfnote.ad.tertsonen.xyz
+
+  rules:
+    # /graphql
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /graphql
+      backendRefs:
+        - name: api
+          port: 3000
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: Pragma
+                value: "no-cache"
+    # /uploads
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /uploads
+      backendRefs:
+        - name: api
+          port: 3000
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: Pragma
+                value: "no-cache"
+    # /calendar.ics
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /calendar.ics
+      backendRefs:
+        - name: api
+          port: 3000
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: Pragma
+                value: "no-cache"
+    # /pad/js/hotkeys-iframe.js (static file)
+    # - matches:
+    #     - path:
+    #         type: PathPrefix
+    #         value: /pad/js/hotkeys-iframe.js
+    #   backendRefs:
+    #     - name: static-files
+    #       namespace: default
+    #       port: 80
+    #   filters:
+    #     - type: URLRewrite
+    #       urlRewrite:
+    #         path:
+    #           type: ReplacePrefixMatch
+    #           replacePrefixMatch: /hotkeys-iframe.js
+    # /pad/
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /pad/
+      backendRefs:
+        - name: hedgedoc
+          namespace: default
+          port: 3000
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: Pragma
+                value: "no-cache"
