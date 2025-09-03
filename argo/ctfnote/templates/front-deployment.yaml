@@ -24,6 +24,6 @@ spec:
         - image: ghcr.io/tfns/ctfnote/front:latest
           name: front
           ports:
-            - containerPort: 8080
+            - containerPort: 80
               protocol: TCP
       restartPolicy: Always
