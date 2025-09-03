@@ -9,6 +9,9 @@ spec:
     - name: traefik
       sectionName: http
       kind: Gateway
+    - name: traefik
+      sectionName: https
+      kind: Gateway
 
   hostnames:
     - ctfnote.ad.tertsonen.xyz
