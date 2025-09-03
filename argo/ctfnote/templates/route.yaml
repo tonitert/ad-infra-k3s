@@ -60,24 +60,24 @@ spec:
               - name: Pragma
                 value: "no-cache"
     # /pad/js/hotkeys-iframe.js (static file)
-    # - matches:
-    #     - path:
-    #         type: PathPrefix
-    #         value: /pad/js/hotkeys-iframe.js
-    #   backendRefs:
-    #     - name: static-files
-    #       port: 80
-    #   filters:
-    #     - type: URLRewrite
-    #       urlRewrite:
-    #         path:
-    #           type: ReplacePrefixMatch
-    #           replacePrefixMatch: /hotkeys-iframe.js
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /pad/js/hotkeys-iframe.js
+      backendRefs:
+        - name: front
+          port: 80
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /hotkeys-iframe.js
     # /pad/
     - matches:
         - path:
             type: PathPrefix
-            value: /pad/
+            value: /pad
       backendRefs:
         - name: hedgedoc
           port: 3000
