@@ -43,12 +43,10 @@ spec:
           - name: DB_PORT
             value: "5432"
           - name: DB_USER_LOGIN
-            value: ctfnote
+            value: user_postgraphile
           - name: DB_USER_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: ctfnote-secrets
-                key: db-user-password
+            # :D seems to be hardcoded
+            value: secret_password
           - name: DISCORD_BOT_TOKEN
             value: bot_token
           - name: DISCORD_REGISTRATION_CTFNOTE_ROLE
