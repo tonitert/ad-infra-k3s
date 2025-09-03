@@ -35,7 +35,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: ctfnote-secrets
-                key: db-admin-password
+                key: db-user-password
           - name: DB_DATABASE
             value: ctfnote
           - name: DB_HOST

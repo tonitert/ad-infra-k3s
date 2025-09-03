@@ -5,7 +5,7 @@ metadata:
     io.kompose.service: ctfnote-uploads
   name: ctfnote-uploads
 spec: 
-  storageClassName: hcloud-volumes
+  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
   resources:
