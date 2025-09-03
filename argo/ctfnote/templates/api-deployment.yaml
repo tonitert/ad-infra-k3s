@@ -43,7 +43,7 @@ spec:
           - name: DB_PORT
             value: "5432"
           - name: DB_USER_LOGIN
-            value: user_postgraphile
+            value: ctfnote
           - name: DB_USER_PASSWORD
             valueFrom:
               secretKeyRef:
