@@ -74,10 +74,6 @@ spec:
             value: "3000"
           image: ghcr.io/tfns/ctfnote/api:latest
           name: api
-          resources:
-            limits:
-              memory: "500m"
-              cpu: "750m"
           volumeMounts:
             - mountPath: /app/uploads
               name: ctfnote-uploads
