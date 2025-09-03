@@ -84,3 +84,11 @@ spec:
             add:
               - name: Pragma
                 value: "no-cache"
+    # /
+    - matches:
+        - path: 
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: front
+          port: 80
