@@ -9,5 +9,9 @@ terraform {
         source  = "hetznercloud/hcloud"
         version = ">= 1.51.0"
       }
+      cloudflare = {
+        source  = "cloudflare/cloudflare"
+        version = "~> 5.9"
+      }
     }
 }
