@@ -6,10 +6,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  repo: https://quay.io/jetstack/charts/cert-manager
-  chart: cert-manager
+  name: cert-manager
+  chart: oci://quay.io/jetstack/charts/cert-manager
   targetNamespace: cert-manager
-  version: "1.18.1"
+  version: "1.18.2"
   valuesContent: |-
     config:
         apiVersion: controller.config.cert-manager.io/v1alpha1
