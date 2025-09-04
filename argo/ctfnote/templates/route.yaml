@@ -75,13 +75,18 @@ spec:
               replacePrefixMatch: /hotkeys-iframe.js
     # /pad/
     - matches:
-        - path:
-            type: PathPrefix
-            value: /pad
+      - path:
+          type: PathPrefix
+          value: /pad
       backendRefs:
         - name: hedgedoc
           port: 3000
       filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
         - type: RequestHeaderModifier
           requestHeaderModifier:
             add:
