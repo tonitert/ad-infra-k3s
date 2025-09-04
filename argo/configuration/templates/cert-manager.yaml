@@ -9,7 +9,7 @@ spec:
   name: cert-manager
   chart: oci://quay.io/jetstack/charts/cert-manager
   targetNamespace: cert-manager
-  version: "1.18.1"
+  version: "v1.18.2"
   valuesContent: |-
     config:
         apiVersion: controller.config.cert-manager.io/v1alpha1
