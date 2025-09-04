@@ -25,5 +25,5 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: letsencrypt-prod
-            namespace: cert-manager
+          - name: ctfnote-certificate
+            namespace: ctfnote
