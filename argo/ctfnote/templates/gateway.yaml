@@ -26,4 +26,4 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: ctfnote-certificate
-            namespace: ctfnote
+            namespace: cert-manager

@@ -2,9 +2,9 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: ctfnote-certificate
-  namespace: ctfnote
+  namespace: cert-manager
 spec:
-  secretName: ctfnote-tls  
+  secretName: letsencrypt-secret
   dnsNames:
     - "ctfnote.ad.tertsonen.xyz" 
   issuerRef:
