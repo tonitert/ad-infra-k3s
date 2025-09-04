@@ -9,7 +9,7 @@ spec:
     server: https://acme-v02.api.letsencrypt.org/directory
     email: toni@tertsonen.xyz
     privateKeySecretRef:
-      name: letsencrypt-prod
+      name: letsencrypt-secret
     solvers:
     - http01:
         gatewayHTTPRoute:
