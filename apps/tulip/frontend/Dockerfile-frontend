@@ -1,5 +1,7 @@
 FROM node:17
 
+LABEL org.opencontainers.image.source="https://github.com/tonitert/ad-infra-k3s"
+
 COPY package.json /app/
 COPY yarn.lock /app/
 
