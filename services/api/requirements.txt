@@ -1,0 +1,5 @@
+Flask_Cors
+Flask
+requests
+python-dateutil
+psycopg[binary,pool]
