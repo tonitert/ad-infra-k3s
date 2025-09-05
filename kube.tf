@@ -1056,12 +1056,6 @@ globalArguments: []
 
 ports:
   web:
-    redirections:
-      entryPoint:
-        to: websecure
-        scheme: https
-        permanent: true
-
     proxyProtocol:
       trustedIPs:
         - 127.0.0.1/32
