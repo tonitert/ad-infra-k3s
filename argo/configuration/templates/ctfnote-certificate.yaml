@@ -4,7 +4,7 @@ metadata:
   name: ctfnote-certificate
   namespace: cert-manager
 spec:
-  secretName: letsencrypt-secret
+  secretName: ctfnote-tls
   dnsNames:
     - "ctfnote.ad.tertsonen.xyz" 
   issuerRef:
