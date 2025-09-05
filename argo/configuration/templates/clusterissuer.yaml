@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer # I'm using ClusterIssuer here
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: toni@tertsonen.xyz
+    privateKeySecretRef:
+      name: letsencrypt-secret
+    solvers:
+    - http01:
+        gatewayHTTPRoute:
+          parentRefs:
+            - name: traefik
+              namespace: ctfnote

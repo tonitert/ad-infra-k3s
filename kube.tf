@@ -18,10 +18,11 @@ module "kube-hetzner" {
 
   # * source can be specified in multiple ways:
   # 1. For normal use, (the official version published on the Terraform Registry), use
-  source = "./kube-hetzner"
+  source = "kube-hetzner/kube-hetzner/hcloud"
+  # source = "./kube-hetzner"
   #    When using the terraform registry as source, you can optionally specify a version number.
   #    See https://registry.terraform.io/modules/kube-hetzner/kube-hetzner/hcloud for the available versions
-  # version = "2.18.0"
+  version = "2.18.1"
   # 2. For local dev, path to the git repo
   # source = "../../kube-hetzner/"
   # 3. If you want to use the latest master branch (see https://developer.hashicorp.com/terraform/language/modules/sources#github), use
@@ -427,7 +428,7 @@ module "kube-hetzner" {
   # To use local storage on the nodes, you can enable Longhorn, default is "false".
   # See a full recap on how to configure agent nodepools for longhorn here https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/discussions/373#discussioncomment-3983159
   # Also see Longhorn best practices here https://gist.github.com/ifeulner/d311b2868f6c00e649f33a72166c2e5b
-  # enable_longhorn = true
+  enable_longhorn = true
 
   # By default, longhorn is pulled from https://charts.longhorn.io.
   # If you need a version of longhorn which assures compatibility with rancher you can set this variable to https://charts.rancher.io.
@@ -466,7 +467,7 @@ module "kube-hetzner" {
 
   # If you want to specify the Kured version, set it below - otherwise it'll use the latest version available.
   # See https://github.com/kubereboot/kured/releases for the available versions.
-  # kured_version = ""
+  kured_version = "1.19.0"
 
   # Default is "traefik".
   # If you want to enable the Nginx (https://kubernetes.github.io/ingress-nginx/) or HAProxy ingress controller instead of Traefik, you can set this to "nginx" or "haproxy".
@@ -898,6 +899,13 @@ module "kube-hetzner" {
   # Extra commands to be executed after the `kubectl apply -k` (useful for post-install actions, e.g. wait for CRD, apply additional manifests, etc.).
   # extra_kustomize_deployment_commands=""
 
+  extra_kustomize_deployment_commands = <<-EOT
+    kubectl -n argocd wait --for condition=established --timeout=120s crd/appprojects.argoproj.io
+    kubectl -n argocd wait --for condition=established --timeout=120s crd/applications.argoproj.io
+    kubectl apply -f /var/user_kustomize/helm-chart.yaml
+    kubectl apply -f /var/user_kustomize/install-argo-sync.yaml
+  EOT
+
   # Extra values that will be passed to the `extra-manifests/kustomization.yaml.tpl` if its present.
   extra_kustomize_parameters = {
     repo_url = var.repo_url
@@ -1041,6 +1049,34 @@ persistence:
 
   # Traefik, all Traefik helm values can be found at https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
+  traefik_values = <<EOT
+deployment:
+  replicas: 1
+globalArguments: []
+
+ports:
+  web:
+    proxyProtocol:
+      trustedIPs:
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+    forwardedHeaders:
+      trustedIPs:
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+  websecure:
+    proxyProtocol:
+      trustedIPs:
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+    forwardedHeaders:
+      trustedIPs:
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+providers:
+  kubernetesGateway:
+    enabled: true
+  EOT
   /*   traefik_values = <<EOT
 deployment:
   replicas: 1

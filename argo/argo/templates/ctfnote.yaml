@@ -3,10 +3,16 @@ kind: Application
 metadata:
   name: ctfnote
 spec:
-  project: ctfnote
+  project: default
   source:
-    path: argo/ctfnote/
+    path: argo/ctfnote
     repoURL: '{{ .Values.repoUrl }}'
-    targetRevision: HEAD
+    targetRevision: "feat/add-ctfnote"
   destination:
     namespace: ctfnote
+    server: "https://kubernetes.default.svc"
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      prune: true

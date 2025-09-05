@@ -1,0 +1,6 @@
+name: global-config
+description: Global resources such as ingress
+version: 0.0.1
+apiVersion: v2
+keywords: []
+sources: []

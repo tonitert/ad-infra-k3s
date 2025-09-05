@@ -49,6 +49,7 @@ jobs:
         run: |
           echo 'github_token="${{ secrets.GITHUB_TOKEN }}"' >> vars.tfvars
           echo 'hcloud_token="${{ secrets.HCLOUD_TOKEN }}"' >> vars.tfvars
+          echo 'cloudflare_token="${{ secrets.CLOUDFLARE_TOKEN }}"' >> vars.tfvars
           echo '' >> vars.tfvars
       
       - uses: op5dev/tf-via-pr@17a512ff6f2ec9f5ba7dc80ed26da4c49aa795fa # 13.6.0

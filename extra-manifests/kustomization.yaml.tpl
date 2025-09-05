@@ -3,6 +3,4 @@ kind: Kustomization
 
 resources:
   - https://github.com/argoproj/argo-cd/manifests/crds?ref=v3.0.12
-  - namespace.yaml
-  - helm-chart.yaml
-  - install-argo-sync.yaml
+  - namespace.yaml 
