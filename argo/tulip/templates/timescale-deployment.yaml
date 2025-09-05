@@ -33,6 +33,8 @@ spec:
               value: trust
             - name: POSTGRES_USER
               value: tulip
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           image: ghcr.io/tonitert/ad-infra-k3s/tulip-timescale:latest
           name: timescale
           volumeMounts:
