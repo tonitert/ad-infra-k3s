@@ -6,6 +6,7 @@ metadata:
   name: timescale-data
   namespace: tulip
 spec:
+  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
   resources:

@@ -4,6 +4,7 @@ metadata:
   name: traffic
   namespace: tulip
 spec:
+  storageClassName: longhorn
   accessModes:
     - ReadWriteMany
   resources:
