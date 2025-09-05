@@ -15,7 +15,7 @@ resource "cloudflare_dns_record" "ctfnote" {
   type    = "A"
   content = module.kube-hetzner.control_planes_public_ipv4[count.index]
   ttl     = 1
-  proxied = true
+  proxied = false
 }
 
 data "cloudflare_zone" "tertsonen_xyz" {
