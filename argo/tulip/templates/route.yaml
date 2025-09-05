@@ -26,8 +26,7 @@ spec:
           extensionRef:
             group: traefik.io
             kind: Middleware
-            name: ctfnote-pad-basic-auth
-            namespace: ctfnote
+            name: tulip-basic-auth
       backendRefs:
         - name: frontend
           port: 3000

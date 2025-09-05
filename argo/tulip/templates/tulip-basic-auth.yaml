@@ -1,0 +1,10 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: tulip-basic-auth
+  namespace: tulip
+spec:
+  chain:
+    middlewares:
+      - name: ctfnote-pad-basic-auth
+        namespace: ctfnote
