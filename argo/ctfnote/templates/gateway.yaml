@@ -25,5 +25,5 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: secret-tls
+          - name: ctfnote-tls
             namespace: ctfnote
