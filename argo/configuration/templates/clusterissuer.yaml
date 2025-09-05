@@ -1,5 +1,5 @@
 apiVersion: cert-manager.io/v1
-kind: ClusterIssuer # I'm using ClusterIssuer here
+kind: ClusterIssuer 
 metadata:
   name: letsencrypt-prod
   namespace: cert-manager
@@ -17,3 +17,5 @@ spec:
           parentRefs:
             - name: traefik
               namespace: ctfnote
+            - name: traefik
+              namespace: tulip
