@@ -5,13 +5,12 @@ metadata:
     kompose.cmd: kompose convert -f docker-compose.yaml
     kompose.version: 1.36.0 (ae2a39403)
     org.opencontainers.image.source: https://github.com/tonitert/ad-infra-k3s
-  labels:
-    io.kompose.service: api
-  name: api
+  name: timescale
+  namespace: tulip
 spec:
   ports:
-    - name: "5000"
-      port: 5000
-      targetPort: 5000
+    - name: "5432"
+      port: 5432
+      targetPort: 5432
   selector:
-    io.kompose.service: api
+    io.kompose.service: timescale

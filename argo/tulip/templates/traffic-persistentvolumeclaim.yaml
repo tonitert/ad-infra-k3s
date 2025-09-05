@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: traffic
+  namespace: tulip
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    limits:
+      storage: 10G

@@ -6,15 +6,13 @@ metadata:
     kompose.version: 1.36.0 (ae2a39403)
     org.opencontainers.image.source: https://github.com/tonitert/ad-infra-k3s
   labels:
-    io.kompose.service: api
-  name: api
+    io.kompose.service: flagids
+  name: flagids
 spec:
   replicas: 1
   selector:
     matchLabels:
-      io.kompose.service: api
-  strategy:
-    type: Recreate
+      io.kompose.service: flagids
   template:
     metadata:
       annotations:
@@ -22,31 +20,24 @@ spec:
         kompose.version: 1.36.0 (ae2a39403)
         org.opencontainers.image.source: https://github.com/tonitert/ad-infra-k3s
       labels:
-        io.kompose.service: api
+        io.kompose.service: flagids
     spec:
       containers:
         - env:
-            - name: FLAG_REGEX
-              value: '[A-Z0-9]{31}='
+            - name: DUMP_PCAPS
+            - name: FLAGID_ENDPOINT
+              value: http://flagidendpoint:8000/flagids.json
+            - name: FLAGID_SCRAPE
+            - name: TEAM_ID
+              value: "3"
             - name: TICK_LENGTH
               value: "180000"
             - name: TICK_START
               value: "2024-11-30T13:00:00Z"
             - name: TIMESCALE
               value: postgres://tulip@timescale:5432/tulip
-            - name: TULIP_TRAFFIC_DIR
-              value: /traffic
-            - name: VM_IP
-              value: 10.10.3.1
-          image: ghcr.io/tonitert/ad-infra-k3s/tulip-api:latest
-          name: api
-          volumeMounts:
-            - mountPath: /traffic
-              name: traffic
-              readOnly: true
+            - name: VISUALIZER_URL
+              value: http://scraper.example.com
+          image: ghcr.io/tonitert/ad-infra-k3s/tulip-flagids:latest
+          name: flagids
       restartPolicy: Always
-      volumes:
-        - name: traffic
-          persistentVolumeClaim:
-            claimName: traffic
-            readOnly: true

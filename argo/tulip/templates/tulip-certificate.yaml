@@ -1,12 +1,12 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: ctfnote-certificate
-  namespace: ctfnote
+  name: tulip-certificate
+  namespace: tulip
 spec:
-  secretName: ctfnote-tls
+  secretName: tulip-tls
   dnsNames:
-    - "ctfnote.ad.tertsonen.xyz" 
+    - "tulip.ad.tertsonen.xyz" 
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer

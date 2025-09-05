@@ -1,5 +1,7 @@
 FROM golang:1.19-alpine
 
+LABEL org.opencontainers.image.source="https://github.com/tonitert/ad-infra-k3s"
+
 RUN apk add --no-cache git make build-base libpcap-dev python3 py3-pip python3-dev bsd-compat-headers openssl-dev
 
 WORKDIR /app

@@ -1,88 +1,148 @@
-version: "3.7"
+version: "3.5"
 services:
-  api:
-    image: ghcr.io/tfns/ctfnote/api:latest
-    build:
-      context: "./api"
-    networks:
-      - ctfnote
+  timescale:
+    build: services/timescale
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-timescale:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
     restart: unless-stopped
-    environment:
-      PAD_CREATE_URL: http://hedgedoc:3000/new
-      PAD_SHOW_URL: /
-      DB_DATABASE: ctfnote
-      DB_ADMIN_LOGIN: ctfnote
-      DB_ADMIN_PASSWORD: ctfnote
-      DB_USER_LOGIN: user_postgraphile
-      DB_USER_PASSWORD: secret_password
-      DB_HOST: db
-      DB_PORT: 5432
-      WEB_PORT: 3000
-      CMD_DOMAIN: ${CMD_DOMAIN:-}
-      CMD_PROTOCOL_USESSL: ${CMD_PROTOCOL_USESSL:-false}
-      CMD_DOCUMENT_MAX_LENGTH: ${CMD_DOCUMENT_MAX_LENGTH:-100000}
-      USE_DISCORD: ${USE_DISCORD:-false}
-      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-bot_token}
-      DISCORD_SERVER_ID: ${DISCORD_SERVER_ID:-server_id}
-      DISCORD_VOICE_CHANNELS: ${DISCORD_VOICE_CHANNELS:-3}
-      DISCORD_REGISTRATION_ENABLED: ${DISCORD_REGISTRATION_ENABLED:-false}
-      DISCORD_REGISTRATION_CTFNOTE_ROLE: ${DISCORD_REGISTRATION_CTFNOTE_ROLE}
-      DISCORD_REGISTRATION_ROLE_ID: ${DISCORD_REGISTRATION_ROLE_ID}
-      TZ: ${TZ:-UTC}
-      LC_ALL: ${LC_ALL:-en_US.UTF-8}
-      SESSION_SECRET: ${SESSION_SECRET:-}
-    depends_on:
-      - db
     volumes:
-      - ctfnote-uploads:/app/uploads
-  db:
-    image: ghcr.io/tfns/ctfnote/db:latest
-    build:
-      context: "./db"
-    restart: unless-stopped
+    - timescale-data:/var/lib/postgresql/data
+    - ./services/schema/system.sql:/docker-entrypoint-initdb.d/100_system.sql:ro
+    - ./services/schema/functions.sql:/docker-entrypoint-initdb.d/101_functions.sql:ro
+    - ./services/schema/schema.sql:/docker-entrypoint-initdb.d/102_schema.sql:ro
+    networks:
+      - internal
     environment:
-      POSTGRES_PASSWORD: ctfnote
-      POSTGRES_USER: ctfnote
-      POSTGRES_MULTIPLE_DATABASES: hedgedoc
-    volumes:
-      - ctfnote-db:/var/lib/postgresql/data
-    networks:
-      - ctfnote
-  front:
-    image: ghcr.io/tfns/ctfnote/front:latest
-    networks:
-      - ctfnote
-    restart: unless-stopped
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: tulip
+      POSTGRES_DB: tulip
+    # This does not need to be adjusted, unless you actually want to limit it
+    # Postgres uses shared memory for caching, and docker assigns just 64 MB by default
+    shm_size: '128g'
+
+  frontend:
     build:
-      context: "./front"
-    depends_on:
-      - hedgedoc
+      context: frontend
+      dockerfile: Dockerfile-frontend
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-frontend:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
+    restart: unless-stopped
     ports:
-      - 127.0.0.1:8080:80
-  hedgedoc:
-    image: quay.io/hedgedoc/hedgedoc:1.10.3
-    environment:
-      - CMD_DB_URL=postgres://ctfnote:ctfnote@db:5432/hedgedoc
-      - CMD_URL_PATH=pad
-      - CMD_DOMAIN
-      - CMD_PROTOCOL_USESSL
-      - CMD_RATE_LIMIT_NEW_NOTES=0
-      - CMD_CSP_ENABLE=${CMD_CSP_ENABLE:-false}
-      - CMD_IMAGE_UPLOAD_TYPE=${CMD_IMAGE_UPLOAD_TYPE:-imgur}
-      - CMD_DOCUMENT_MAX_LENGTH=${CMD_DOCUMENT_MAX_LENGTH:-100000}
+      - "3000:3000"
+    expose:
+      - 3000
     depends_on:
-      - db
-    restart: unless-stopped
-    volumes:
-      - pad-uploads:/hedgedoc/public/uploads
+      - timescale
+      - api
     networks:
-      - ctfnote
+      - internal
+    environment:
+      API_SERVER_ENDPOINT: http://api:5000/
+      VIRTUAL_HOST: tulip.h4xx.eu
+
+  api:
+    build:
+      context: services/api
+      dockerfile: Dockerfile-api
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-api:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
+    restart: unless-stopped
+    depends_on:
+      - timescale
+    networks:
+      - internal
+    volumes:
+      - ${TRAFFIC_DIR_HOST}:${TRAFFIC_DIR_DOCKER}:ro,z
+    environment:
+      TIMESCALE: ${TIMESCALE}
+      TULIP_TRAFFIC_DIR: ${TRAFFIC_DIR_DOCKER}
+      FLAG_REGEX: ${FLAG_REGEX}
+      TICK_START: ${TICK_START}
+      TICK_LENGTH: ${TICK_LENGTH}
+      VM_IP: ${VM_IP}
+
+  flagids:
+    restart: unless-stopped
+    build:
+      context: services/flagids
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-flagids:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
+    depends_on:
+      - timescale
+    networks:
+      - internal
+    environment:
+      TIMESCALE: ${TIMESCALE}
+      TICK_START: ${TICK_START}
+      TICK_LENGTH: ${TICK_LENGTH}
+      FLAGID_SCRAPE: ${FLAGID_SCRAPE}
+      TEAM_ID: ${TEAM_ID}
+      FLAGID_ENDPOINT: ${FLAGID_ENDPOINT}
+      VISUALIZER_URL: ${VISUALIZER_URL}
+      DUMP_PCAPS: ${DUMP_PCAPS}
+
+  assembler:
+    build:
+      context: services/go-importer
+      dockerfile: Dockerfile-assembler
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-assembler:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
+    restart: unless-stopped
+    depends_on:
+      - timescale
+    networks:
+      - internal
+    volumes:
+      - ${TRAFFIC_DIR_HOST}:${TRAFFIC_DIR_DOCKER}:ro,z
+    # Command line flags most likely to fix a tulip issue:
+    # - -http-session-tracking: enable HTTP session tracking
+    # - -dir: directory to read traffic from
+    # - -skipchecksum: skip checksum validation
+    # - -flush-after: i.e. 2m Not needed in pcap rotation mode
+    # - -disable-converters: disable converters
+    # - -discard-extra-data: dont split large flow items, just discard them
+    command: "./assembler -http-session-tracking -skipchecksum -disable-converters -dir ${TRAFFIC_DIR_DOCKER}"
+    environment:
+      TIMESCALE: ${TIMESCALE}
+      FLAG_REGEX: ${FLAG_REGEX}
+      TICK_START: ${TICK_START}
+      TICK_LENGTH: ${TICK_LENGTH}
+      FLAGID_SCAN: ${FLAGID_SCAN}
+      FLAG_LIFETIME: ${FLAG_LIFETIME}
+      FLAG_VALIDATOR_TYPE: ${FLAG_VALIDATOR_TYPE}
+      FLAG_VALIDATOR_TEAM: ${FLAG_VALIDATOR_TEAM}
+      PCAP_OVER_IP: ${PCAP_OVER_IP}
+      DUMP_PCAPS: ${DUMP_PCAPS}
+      DUMP_PCAPS_INTERVAL: ${DUMP_PCAPS_INTERVAL}
+      DUMP_PCAPS_FILENAME: ${DUMP_PCAPS_FILENAME}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  enricher:
+    build:
+      context: services/go-importer
+      dockerfile: Dockerfile-enricher
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-enricher:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
+    restart: unless-stopped
+    depends_on:
+      - timescale
+    networks:
+      - internal
+    volumes:
+      - ${TRAFFIC_DIR_HOST}:${TRAFFIC_DIR_DOCKER}:ro,z
+    command: "./enricher -eve ${TRAFFIC_DIR_DOCKER}/eve.json"
+    environment:
+      TIMESCALE: ${TIMESCALE}
+
 volumes:
-  ctfnote-db:
-    name: ctfnote
-  ctfnote-uploads:
-    name: ctfnote-uploads
-  pad-uploads:
-    name: pad-uploads
+  timescale-data:
+
 networks:
-  ctfnote:
+  internal:

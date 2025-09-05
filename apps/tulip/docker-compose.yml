@@ -2,7 +2,9 @@ version: "3.5"
 services:
   timescale:
     build: services/timescale
-    image: tulip-timescale:latest
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-timescale:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
     restart: unless-stopped
     volumes:
     - timescale-data:/var/lib/postgresql/data
@@ -23,7 +25,9 @@ services:
     build:
       context: frontend
       dockerfile: Dockerfile-frontend
-    image: tulip-frontend:latest
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-frontend:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -42,7 +46,9 @@ services:
     build:
       context: services/api
       dockerfile: Dockerfile-api
-    image: tulip-api:latest
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-api:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
     restart: unless-stopped
     depends_on:
       - timescale
@@ -62,7 +68,9 @@ services:
     restart: unless-stopped
     build:
       context: services/flagids
-    image: tulip-flagids:latest
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-flagids:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
     depends_on:
       - timescale
     networks:
@@ -81,7 +89,9 @@ services:
     build:
       context: services/go-importer
       dockerfile: Dockerfile-assembler
-    image: tulip-assembler:latest
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-assembler:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
     restart: unless-stopped
     depends_on:
       - timescale
@@ -117,7 +127,9 @@ services:
     build:
       context: services/go-importer
       dockerfile: Dockerfile-enricher
-    image: tulip-enricher:latest
+    image: ghcr.io/tonitert/ad-infra-k3s/tulip-enricher:latest
+    labels:
+      - org.opencontainers.image.source=https://github.com/tonitert/ad-infra-k3s
     restart: unless-stopped
     depends_on:
       - timescale

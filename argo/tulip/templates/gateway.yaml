@@ -3,7 +3,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: traefik
-  namespace: ctfnote
+  namespace: tulip
 spec:
   gatewayClassName: traefik
 
@@ -25,5 +25,5 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: ctfnote-tls
-            namespace: ctfnote
+          - name: tulip-tls
+            namespace: tulip

@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tulip
+spec:
+  project: default
+  source:
+    path: argo/tulip
+    repoURL: '{{ .Values.repoUrl }}'
+    targetRevision: "feat/add-tulip"
+  destination:
+    namespace: tulip
+    server: "https://kubernetes.default.svc"
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      prune: true

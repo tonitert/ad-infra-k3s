@@ -1,5 +1,7 @@
 FROM golang:1.19-alpine
 
+LABEL org.opencontainers.image.source="https://github.com/tonitert/ad-infra-k3s"
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
