@@ -57,7 +57,7 @@ spec:
           name: assembler
           volumeMounts:
             - mountPath: /traffic
-              name: assembler-claim0
+              name: traffic
               readOnly: true
       restartPolicy: Always
       volumes:
