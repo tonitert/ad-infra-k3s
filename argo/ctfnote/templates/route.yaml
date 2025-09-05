@@ -82,6 +82,11 @@ spec:
         - name: hedgedoc
           port: 3000
       filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: ctfnote-pad-basic-auth
         - type: URLRewrite
           urlRewrite:
             path:
