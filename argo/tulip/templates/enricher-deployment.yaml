@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yaml
+    kompose.version: 1.36.0 (ae2a39403)
+    org.opencontainers.image.source: https://github.com/tonitert/ad-infra-k3s
+  labels:
+    io.kompose.service: enricher
+  name: enricher
+  namespace: tulip
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: enricher
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yaml
+        kompose.version: 1.36.0 (ae2a39403)
+        org.opencontainers.image.source: https://github.com/tonitert/ad-infra-k3s
+      labels:
+        io.kompose.service: enricher
+    spec:
+      containers:
+        - args:
+            - ./enricher
+            - -eve
+            - /traffic/eve.json
+          env:
+            - name: TIMESCALE
+              value: postgres://tulip@timescale:5432/tulip
+          image: ghcr.io/tonitert/ad-infra-k3s/tulip-enricher:latest
+          name: enricher
+          volumeMounts:
+            - mountPath: /traffic
+              name: traffic
+              readOnly: true
+      restartPolicy: Always
+      volumes:
+        - name: traffic
+          persistentVolumeClaim:
+            claimName: traffic
+            readOnly: true

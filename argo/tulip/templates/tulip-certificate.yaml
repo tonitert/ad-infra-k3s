@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tulip-certificate
+  namespace: tulip
+spec:
+  secretName: tulip-tls
+  dnsNames:
+    - "tulip.ad.tertsonen.xyz" 
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    namespace: cert-manager

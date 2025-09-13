@@ -1,0 +1,18 @@
+FROM node:17
+
+LABEL org.opencontainers.image.source="https://github.com/tonitert/ad-infra-k3s"
+
+COPY package.json /app/
+COPY yarn.lock /app/
+
+WORKDIR /app
+
+RUN yarn
+
+COPY . /app/
+
+RUN yarn run build
+
+EXPOSE 3000
+
+CMD ["yarn", "run", "preview", "--host", "--port", "3000"]

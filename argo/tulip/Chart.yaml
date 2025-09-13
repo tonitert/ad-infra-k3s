@@ -1,0 +1,7 @@
+name: tulip
+description: A generated Helm Chart for tulip from Skippbox Kompose
+version: 0.0.1
+apiVersion: v2
+keywords:
+  - tulip
+sources: []
