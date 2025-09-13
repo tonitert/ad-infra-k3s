@@ -7,7 +7,7 @@ spec:
   source:
     path: argo/tulip
     repoURL: '{{ .Values.repoUrl }}'
-    targetRevision: "feat/add-tulip"
+    targetRevision: "master"
   destination:
     namespace: tulip
     server: "https://kubernetes.default.svc"
