@@ -1,0 +1,170 @@
+version: '3'
+
+#
+# Have a look at the .env file -> used for configuration
+#
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.9-management-alpine
+    restart: always
+    init: true
+    expose:
+      - "15672"
+      - "5672"
+    hostname: ataka-rabbitmq
+    networks:
+      - ataka
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq:rw
+
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    init: true
+    hostname: ataka-postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - ataka
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data:rw
+
+  adminer:
+    image: adminer:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    hostname: ataka-adminer
+    networks:
+      - ataka
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+  api:
+    image: openattackdefensetools/ataka-api
+    restart: always
+    init: true
+    user: $USERID
+    build:
+      context: ./
+      dockerfile: ataka/api/Dockerfile
+    volumes:
+      - ${DATA_STORE}/shared:/data/shared:rw,z
+      - ${DATA_STORE}/exploits:/data/exploits:rw,z
+    ports:
+      - "8000:8000"
+    security_opt:
+      - label:disable
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-api
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+  executor:
+    image: openattackdefensetools/ataka-executor
+    restart: always
+    init: true
+    user: $USERID
+    build:
+      context: ./
+      dockerfile: ataka/executor/Dockerfile
+    volumes:
+      - /var/run/docker.sock:/run/docker.sock:rw
+      - ${DATA_STORE}/shared:/data/shared:rw,z
+      - ${DATA_STORE}/exploits:/data/exploits:rw,z
+      - ${DATA_STORE}/persist:/data/persist:rw,z
+    security_opt:
+      - label:disable
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-executor
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+  exploit:
+    image: alpine:latest
+    command: "sleep infinity"
+    restart: always
+    init: true
+    user: $USERID
+    container_name: ataka-exploit
+    networks:
+      - ataka-exploits
+
+  ctfcode:
+    image: openattackdefensetools/ataka-ctfcode
+    restart: always
+    init: true
+    user: $USERID
+    build:
+      context: ./
+      dockerfile: ataka/ctfcode/Dockerfile
+    volumes:
+      - ./ataka/ctfconfig:/ataka/ctfconfig:ro
+      - ./ataka/player-cli:/ataka/player-cli:ro
+      - ${DATA_STORE}/shared:/data/shared:rw,z
+    security_opt:
+      - label:disable
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-ctfcode
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+  cli:
+    image: openattackdefensetools/ataka-cli
+    restart: always
+    init: true
+    user: $USERID
+    build:
+      context: ./
+      dockerfile: ataka/cli/Dockerfile
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-cli
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+
+
+networks:
+  ataka:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-ataka
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 2001:0DB8::/112
+
+  ataka-exploits:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-exploits
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 2001:0DB9::/112

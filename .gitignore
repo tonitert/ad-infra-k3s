@@ -20,3 +20,13 @@ gitlab-state.config
 plan.out
 pcap-stress-out
 k3s_kubeconfig.yaml
+*.pyc
+*.swp
+.idea/
+*.iml
+src/**/__pycache__/
+venv/
+**/.vagrant/
+data/
+ataka-player-cli.pyz
+ataka/player-cli/player_cli/ctfconfig.py
