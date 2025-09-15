@@ -1,0 +1,10 @@
+*.pyc
+*.swp
+.idea/
+*.iml
+src/**/__pycache__/
+venv/
+**/.vagrant/
+data/
+ataka-player-cli.pyz
+ataka/player-cli/player_cli/ctfconfig.py
