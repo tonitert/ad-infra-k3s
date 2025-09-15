@@ -1,4 +1,6 @@
-FROM python:3.11-slim
+FROM docker:28.4.0
+
+RUN apk add --no-cache python3 py3-pip git
 
 RUN pip install --no-cache-dir --upgrade pip
 
