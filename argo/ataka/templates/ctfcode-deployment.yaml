@@ -38,8 +38,6 @@ spec:
               readOnly: true
             - mountPath: /ataka/player-cli
               name: ctfcode-cm1
-              defaultMode: 0555
-              mode: 0555
             - mountPath: /data/shared
               name: shared
       hostname: ataka-ctfcode
@@ -50,8 +48,8 @@ spec:
           name: ctfcode-cm0
         - configMap:
             name: ctfcode-cm1
+            defaultMode: 0555
           name: ctfcode-cm1
-          defaultMode: 0555
         - name: shared
           persistentVolumeClaim:
             claimName: shared
