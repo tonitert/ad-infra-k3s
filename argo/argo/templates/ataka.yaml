@@ -1,15 +1,15 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tulip
+  name: ataka
 spec:
   project: default
   source:
-    path: argo/tulip
+    path: argo/ataka
     repoURL: '{{ .Values.repoUrl }}'
-    targetRevision: "master"
+    targetRevision: "feat/add-ataka"
   destination:
-    namespace: tulip
+    namespace: ataka
     server: "https://kubernetes.default.svc"
   syncPolicy:
     syncOptions:
