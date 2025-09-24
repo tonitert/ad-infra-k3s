@@ -40,6 +40,7 @@ spec:
               name: ctfcode-cm1
               readOnly: true
               defaultMode: 0555
+              mode: 0555
             - mountPath: /data/shared
               name: shared
       hostname: ataka-ctfcode
