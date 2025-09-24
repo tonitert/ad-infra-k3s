@@ -32,6 +32,7 @@ spec:
       initContainers:
         - image: docker:28.4.0-dind
           name: dind
+          restartPolicy: Always
           securityContext:
             privileged: true
             runAsGroup: 0
