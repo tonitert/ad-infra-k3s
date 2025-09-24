@@ -23,8 +23,8 @@ spec:
     spec:
       containers:
         - envFrom:
-            - configMapRef:
-                name: env
+            - secretRef:
+                name: ataka-env-secret
           image: ghcr.io/tonitert/ad-infra-k3s/ataka-cli:latest
           name: cli
           securityContext:
