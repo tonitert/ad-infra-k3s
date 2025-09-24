@@ -35,6 +35,7 @@ spec:
                 name: ataka-env-secret
           image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
           name: executor
+          command: [ "sh", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.executor" ]
           securityContext:
             runAsGroup: 966
             runAsUser: 1000
