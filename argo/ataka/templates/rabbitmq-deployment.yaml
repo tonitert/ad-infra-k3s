@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../apps/ataka/docker-compose.yml -c --generate-network-policies
+    kompose.service.type: clusterip
+    kompose.version: 1.36.0 (ae2a39403)
+  labels:
+    io.kompose.service: rabbitmq
+  name: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: rabbitmq
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f ../../apps/ataka/docker-compose.yml -c --generate-network-policies
+        kompose.service.type: clusterip
+        kompose.version: 1.36.0 (ae2a39403)
+      labels:
+        io.kompose.network/ataka-ataka: "true"
+        io.kompose.service: rabbitmq
+    spec:
+      containers:
+        - env:
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: ataka-env-secret
+                  key: RABBITMQ_PASSWORD
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: ataka-env-secret
+                  key: RABBITMQ_USER
+          image: rabbitmq:3.9-management-alpine
+          name: rabbitmq
+          ports:
+            - containerPort: 15672
+              protocol: TCP
+            - containerPort: 5672
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/lib/rabbitmq
+              name: rabbitmq-data
+      hostname: ataka-rabbitmq
+      restartPolicy: Always
+      volumes:
+        - name: rabbitmq-data
+          persistentVolumeClaim:
+            claimName: rabbitmq-data

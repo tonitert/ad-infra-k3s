@@ -1,0 +1,8 @@
+name: ataka
+description: A generated Helm Chart for ataka from Skippbox Kompose
+version: 0.0.1
+apiVersion: v2
+keywords:
+  - ataka
+sources: []
+home: https://github.com/tonitert/ad-infra-k3s

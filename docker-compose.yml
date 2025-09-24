@@ -20,6 +20,8 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq:rw
+    labels:
+      kompose.service.type: clusterip
 
   postgres:
     image: postgres:14-alpine
@@ -35,6 +37,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data:rw
+    labels:
+      kompose.service.type: clusterip
 
   adminer:
     image: adminer:latest
@@ -70,6 +74,8 @@ services:
       - ataka
     env_file:
       - .env
+    labels:
+      kompose.service.type: clusterip
 
   executor:
     image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
@@ -94,6 +100,10 @@ services:
       - ataka
     env_file:
       - .env
+    labels:
+      kompose.hpa.replicas.max: 3
+      kompose.hpa.replicas.min: 1
+      kompose.hpa.cpu: 40%
 
   exploit:
     image: alpine:latest

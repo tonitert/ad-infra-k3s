@@ -1,0 +1,569 @@
+apiVersion: v1
+data:
+  enowars7.py: |
+    from pwn import *
+    import json
+    import requests
+
+    try:
+        from ataka.common.database.models import FlagStatus
+    except ImportError as e:
+        import enum
+
+        class FlagStatus(str, enum.Enum):
+            UNKNOWN = "unknown"
+
+            # everything is fine
+            OK = "ok"
+
+            # Flag is currently being submitted
+            QUEUED = "queued"
+
+            # Flag is currently being submitted
+            PENDING = "pending"
+
+            # We already submitted this flag and the submission system tells us thats
+            DUPLICATE = "duplicate"
+
+            # something is wrong with our submitter
+            ERROR = "error"
+
+            # the service did not check the flag, but told us to fuck off
+            RATELIMIT = "ratelimit"
+
+            # something is wrong with the submission system
+            EXCEPTION = "exception"
+
+            # we tried to submit our own flag and the submission system lets us know
+            OWNFLAG = "ownflag"
+
+            # the flag is not longer active. This is used if a flags are restricted to a
+            # specific time frame
+            INACTIVE = "inactive"
+
+            # flag fits the format and could be sent to the submission system, but the
+            # submission system told us it is invalid
+            INVALID = "invalid"
+
+            # This status code is used in case the scoring system requires the services to
+            # be working. Flags that are rejected might be sent again!
+            SERVICEBROKEN = "servicebroken"
+
+
+    FLAG_SUBMIT_HOST = "10.0.13.37"
+    FLAG_SUBMIT_PORT = 1337
+
+    # Ataka Host Domain / IP
+    ATAKA_HOST = "ataka.local"
+
+    # Our own host
+    OWN_HOST = "10.1.2.1"
+
+    RUNLOCAL_TARGETS = ["10.1.1.1"]
+
+    # Config for framework
+    ROUND_TIME = 60
+
+    # format: regex, group where group 0 means the whole regex
+    FLAG_REGEX = r"ENO[A-Za-z0-9+\/=]{48}", 0
+
+
+    FLAG_BATCHSIZE = 1000
+
+    FLAG_RATELIMIT = 5  # Wait in seconds between each call of submit_flags()
+
+    START_TIME = 1690027200
+
+    # IPs that are always excluded from attacks.
+    STATIC_EXCLUSIONS = set(["10.1.2.1"])
+
+    # End config
+
+
+    def get_services() -> list:
+        return [
+            "asocialnetwork",
+            "bollwerk",
+            "phreaking",
+            "yvm",
+            "granulizer",
+            "oldschool",
+            "steinsgate",
+        ]
+
+
+    def get_targets() -> dict:
+        r = requests.get(f"https://7.enowars.com/scoreboard/attack.json")
+
+        services = r.json()["services"]
+        print("getting services")
+        return {
+            service: [
+                {"ip": ip, "extra": json.dumps(services[service][ip])}
+                for ip in services[service].keys()
+            ]
+            if service in services
+            else [{"ip": ip, "extra": "[]"} for ip in get_all_target_ips()]
+            for service in get_services()
+        }
+
+
+    def get_all_target_ips() -> set:
+        r = requests.get(f"https://7.enowars.com/api/data/ips")
+        ips = r.text.split("\n")
+        ips = [ip for ip in ips if ip != ""]
+        return set(ips)
+
+
+    def submit_flags(flags) -> list:
+        # TODO for next time: exchange with long-living socket, possibly async API
+        results = []
+        try:
+            HEADER = b"Welcome to the EnoEngine's EnoFlagSink\xe2\x84\xa2!\nPlease submit one flag per line. Responses are NOT guaranteed to be in chronological order.\n\n"
+            server = remote(FLAG_SUBMIT_HOST, FLAG_SUBMIT_PORT, timeout=2)
+            server.recvuntil(HEADER, timeout=5)
+            for flag in flags:
+                server.sendline(flag.encode())
+                response = server.recvline(timeout=2)
+                if b" INV" in response:
+                    results += [FlagStatus.INVALID]
+                elif b" OLD" in response:
+                    results += [FlagStatus.INACTIVE]
+                elif b" OK" in response:
+                    results += [FlagStatus.OK]
+                elif b" OWN" in response:
+                    results += [FlagStatus.OWNFLAG]
+                elif b" DUP" in response:
+                    results += [FlagStatus.DUPLICATE]
+                else:
+                    results += [FlagStatus.ERROR]
+                    print(f"Invalid response: {response}")
+            server.close()
+        except Exception as e:
+            print(f"Exception: {e}", flush=True)
+            results += [FlagStatus.ERROR for _ in flags[len(results)]]
+
+        return results
+
+
+    if __name__ == "__main__":
+        import pprint
+
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.pprint(get_targets())
+        pp.pprint(
+            submit_flags(
+                [
+                    "ENOBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                    "ENOBCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                    "jou",
+                ]
+            )
+        )
+  faustctf.py: |
+    import json
+    import requests
+        
+    from pwn import *
+
+    from ataka.common.flag_status import FlagStatus
+
+    ### EXPORTED CONFIG
+
+    # Ataka Host Domain / IP
+    ATAKA_HOST = "ataka.ad.tertsonen.xyz"
+
+    # Default targets for atk runlocal
+    RUNLOCAL_TARGETS = [
+        # NOP Team
+        "fd66:666:1::2",
+    ]
+
+    # IPs that are always excluded from attacks. These can be included in runlocal with --ignore-exclusions
+    # These still get targets with flag ids, they're just never (automatically) attacked
+    STATIC_EXCLUSIONS = {"fd66:666:663::2"}
+
+    ROUND_TIME = 180
+
+    # format: regex, group where group 0 means the whole regex
+    FLAG_REGEX = r"FAUST_[A-Za-z0-9/+]{32}", 0
+
+    # Maximum list length for submit_flags()
+    FLAG_BATCHSIZE = 500
+
+    # Minimum wait in seconds between each call of submit_flags()
+    FLAG_RATELIMIT = 3
+
+    # When the CTF starts
+    START_TIME = 1758974400 + 1  # Saturday, 27th September 2025, 12.00 PM GMT
+
+    ### END EXPORTED CONFIG
+
+    EDITION = 2025
+
+    FLAGID_URL = f"https://{EDITION}.faustctf.net/competition/teams.json"
+
+
+    def get_targets():
+        no_flagid_services = {"jokes", "office-supplies"}
+
+        teams = requests.get(FLAGID_URL).json()
+
+        team_ids = teams['teams']
+        flag_ids = teams['flag_ids']
+
+        ## A generic solution for just a single vulnbox:
+        default_targets = {service: {str(i): [] for i in team_ids} for service in no_flagid_services} | {service: {} for service in flag_ids.keys()}
+
+        targets = {
+            service: [
+                {
+                    "ip": f"fd66:666:{i}::2",
+                    "extra": json.dumps(info),
+                }
+                for i, info in (default_targets[service] | service_info).items()
+            ]
+            for service, service_info in ({service: {} for service in no_flagid_services} | flag_ids).items()
+        }
+
+        return targets
+
+
+    def submit_flags(flags):
+        # TODO for next time: exchange with long-living socket, possibly async API
+        results = []
+        try:
+            HEADER = b"\nOne flag per line please!\n\n"
+            server = remote("submission.faustctf.net", 666, timeout=2)
+            server.recvuntil(HEADER, timeout=5)
+            for flag in flags:
+                server.sendline(flag.encode())
+                response = server.recvline(timeout=2)
+                if b" INV" in response:
+                   results += [FlagStatus.INVALID]
+                elif b' OLD' in response:
+                    results += [FlagStatus.INACTIVE]
+                elif b' OK' in response:
+                    results += [FlagStatus.OK]
+                elif b' OWN' in response:
+                    results += [FlagStatus.OWNFLAG]
+                elif b' DUP' in response:
+                    results += [FlagStatus.DUPLICATE]
+                else:
+                    results += [FlagStatus.ERROR]
+                    print(f"Invalid response: {response}")
+            server.close()
+        except Exception as e:
+            print(f"Exception: {e}", flush=True)
+            results += [FlagStatus.ERROR for _ in flags[len(results):]]
+
+        return results
+  iccdemo.py: |
+    import json
+    import requests
+
+    from ataka.common.flag_status import FlagStatus
+
+    ### EXPORTED CONFIG
+
+    # Ataka Host Domain / IP
+    ATAKA_HOST = "ataka.h4xx.eu"
+
+    # Default targets for atk runlocal
+    RUNLOCAL_TARGETS = [
+        # NOP Team
+        "10.60.0.1",
+        "10.61.0.1",
+        "10.62.0.1",
+        "10.63.0.1",
+        "10.60.1.1",
+        "10.61.1.1",
+        "10.62.1.1",
+        "10.63.1.1",
+        "10.60.7.1",
+        "10.61.7.1",
+        "10.62.7.1",
+        "10.63.7.1",
+    ]
+
+    # IPs that are always excluded from attacks. These can be included in runlocal with --ignore-exclusions
+    # These still get targets with flag ids, they're just never (automatically) attacked
+    STATIC_EXCLUSIONS = {"10.60.5.1", "10.61.5.1", "10.62.5.1", "10.63.5.1"}
+
+    ROUND_TIME = 120
+
+    # format: regex, group where group 0 means the whole regex
+    FLAG_REGEX = r"[A-Z0-9]{31}=", 0
+
+    # Maximum list length for submit_flags()
+    FLAG_BATCHSIZE = 2500
+
+    # Minimum wait in seconds between each call of submit_flags()
+    FLAG_RATELIMIT = 5
+
+    # When the CTF starts
+    START_TIME = 1689490800 + 1  # Sun Jul 16 2023 09:00:00 GMT+0200 (Central European Summer Time)
+
+    ### END EXPORTED CONFIG
+
+
+    TEAM_TOKEN = "45f8890e6c13d864527c1e869ca384d0"
+    SUBMIT_URL = "http://10.10.0.1:8080/flags"
+    FLAGID_URL = "http://10.10.0.1:8081/flagIds"
+
+
+    def get_targets():
+        services = ["CyberUni_1", "CyberUni_2", "CyberUni_3", "CyberUni_4",
+                    "ClosedSea-1", "ClosedSea-2", "Trademark", "rpn"]
+
+        ## TODO: fill
+        default_targets = {
+            "rpn":
+                {f"10.60.{i}.1": [] for i in range(10)},
+            "CyberUni_1":
+                {f"10.61.{i}.1": [] for i in range(10)},
+            "CyberUni_2":
+                {f"10.61.{i}.1": [] for i in range(10)},
+            "Trademark":
+                {f"10.62.{i}.1": [] for i in range(10)},
+        }
+        ## A generic solution for just a single vulnbox:
+        # default_targets = {service: {f"10.62.{i}.1": [] for i in range(10)} for service in services}
+
+        flag_ids = requests.get(FLAGID_URL).json()
+
+        targets = {
+            service: [
+                {
+                    "ip": ip,
+                    "extra": json.dumps(ip_info),
+                }
+                for ip, ip_info in (default_targets[service] | service_info).items()
+            ]
+            for service, service_info in ({service: [] for service in services} | flag_ids).items()
+        }
+
+        return targets
+
+
+    def submit_flags(flags):
+        resp = requests.put(
+            SUBMIT_URL, headers={"X-Team-Token": TEAM_TOKEN}, json=flags
+        ).json()
+
+        results = []
+        for flag_resp in resp:
+            msg = flag_resp["msg"]
+            if flag_resp["status"]:
+                status = FlagStatus.OK
+            elif "invalid flag" in msg:
+                status = FlagStatus.INVALID
+            elif "flag from nop team" in msg:
+                status = FlagStatus.INACTIVE
+            elif "flag is your own" in msg:
+                status = FlagStatus.OWNFLAG
+            elif "flag too old" in msg or "flag is too old" in msg:
+                status = FlagStatus.INACTIVE
+            elif "flag already claimed" in msg:
+                status = FlagStatus.DUPLICATE
+            else:
+                status = FlagStatus.ERROR
+                print(f"Got error while flagsubmission: {msg}")
+            results.append(status)
+
+        return results
+  ructf.py: |+
+    import json
+
+    from ataka.common.flag_status import FlagStatus
+
+    ### EXPORTED CONFIG
+
+    # Ataka Host Domain / IP
+    ATAKA_HOST = 'ataka.h4xx.eu'
+
+    # Default targets for atk runlocal
+    RUNLOCAL_TARGETS = ["10.60.1.3"]
+
+    # IPs that are always excluded from attacks.
+    STATIC_EXCLUSIONS = {'10.61.84.3'}
+
+    ROUND_TIME = 60
+
+    # format: regex, group where group 0 means the whole regex
+    FLAG_REGEX = r"[A-Z0-9]{31}=", 0
+    # FLAG_REGEX = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}", 0
+
+    FLAG_BATCHSIZE = 100
+
+    FLAG_RATELIMIT = 1  # Wait in seconds between each call of submit_flags()
+
+    # When the CTF starts
+    START_TIME = 1699092000
+
+    ### END EXPORTED CONFIG
+
+    import requests
+
+    SERVICES_URL = 'https://monitor.cloud.ructf.org/services'
+    FLAGID_URL = 'https://monitor.cloud.ructf.org/flag_ids?service=%s'
+    SUBMIT_URL = 'https://monitor.cloud.ructf.org/flags'
+
+    TEAM_TOKEN = 'CLOUD_340_d86dc72998b6f974679d5c963a79a5cc'
+
+    def get_targets():
+        # COPY FROM flagids NOT scoreboard
+        services = requests.get(SERVICES_URL).json()
+        #print(services)
+        services = [str(service_id) + '_' + str(service_name) for service_id, service_name in services.items()]
+
+        try:
+            targets = {}
+
+            for service_name in services:
+                service_id = service_name.split('_', 1)[0]
+                dt = requests.get(FLAGID_URL % (service_id,), headers={"X-Team-Token": TEAM_TOKEN}).json()
+                # print(dt)
+
+                flag_ids = dt['flag_ids']
+                targets[service_name] = [
+                    {
+                        'ip': data['host'],
+                        'extra': json.dumps(data['flag_ids'])
+                    }
+                    for team_id, data in flag_ids.items()
+                ]
+            #print(targets)
+            return targets
+        except Exception as e:
+            print(f"Error while getting targets: {e}")
+            return {service: [] for service in services}
+
+
+        services = ["buffalo", "gopher_coin", "kyc", "oly_consensus", "swiss_keys", "to_the_moon", "wall.eth"]
+
+        default_targets = {service: {f"10.99.{i}.2": ["1234", "5678"] for i in range(10)} for service in services}
+
+        # remote fetch here
+        flag_ids = default_targets
+
+        targets = {
+            service: [
+                {
+                    "ip": ip,
+                    "extra": json.dumps(ip_info),
+                }
+                for ip, ip_info in (default_targets[service] | service_info).items()
+            ]
+            for service, service_info in ({service: [] for service in services} | flag_ids).items()
+        }
+
+        return targets
+
+    def submit_flags(flags):
+        results = []
+        try:
+            conn = requests.put(SUBMIT_URL, json=flags, headers={'X-Team-Token': TEAM_TOKEN})
+            resp = conn.json()
+            for flag_answer in resp:
+                msg = flag_answer["msg"]
+                if 'Accepted' in msg:
+                    status = FlagStatus.OK
+                elif 'invalid or own flag' in msg:
+                    status = FlagStatus.INVALID
+                elif 'flag is too old' in resp:
+                    status = FlagStatus.INACTIVE
+                elif 'already submitted' in msg:
+                    status = FlagStatus.DUPLICATE
+                # elif 'NOP team' in resp:
+                #     status = FlagStatus.NOP
+                #elif 'flag is your own' in msg:
+                #    status = FlagStatus.OWNFLAG
+                # elif 'OFFLINE' in resp:
+                #     status = FlagStatus.OFFLINE
+                else:
+                    status = FlagStatus.ERROR
+                    print(msg)
+                results.append(status)
+
+        except Exception as e:
+            print(f"Error while submitting flags: {e}")
+            results += [FlagStatus.ERROR]*(len(flags)-len(results))
+
+        return results
+
+  testctf.py: |
+    import json
+
+    from ataka.common.flag_status import FlagStatus
+
+    ### EXPORTED CONFIG
+
+    # Ataka Host Domain / IP
+    ATAKA_HOST = 'ataka.h4xx.eu'
+
+    # Default targets for atk runlocal
+    RUNLOCAL_TARGETS = ["10.99.0.2"]
+
+    # IPs that are always excluded from attacks.
+    STATIC_EXCLUSIONS = {'10.99.1.2'}
+
+    ROUND_TIME = 10
+
+    # format: regex, group where group 0 means the whole regex
+    FLAG_REGEX = r"[A-Z0-9]{31}=", 0
+    # FLAG_REGEX = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}", 0
+
+    FLAG_BATCHSIZE = 100
+
+    FLAG_RATELIMIT = 1  # Wait in seconds between each call of submit_flags()
+
+    # When the CTF starts
+    START_TIME = 1690227547
+
+
+    ### END EXPORTED CONFIG
+
+    def get_targets():
+        services = ["buffalo", "gopher_coin", "kyc", "oly_consensus", "swiss_keys", "to_the_moon", "wall.eth"]
+
+        default_targets = {service: {f"10.99.{i}.2": ["1234", "5678"] for i in range(10)} for service in services}
+
+        # remote fetch here
+        flag_ids = default_targets
+
+        targets = {
+            service: [
+                {
+                    "ip": ip,
+                    "extra": json.dumps(ip_info),
+                }
+                for ip, ip_info in (default_targets[service] | service_info).items()
+            ]
+            for service, service_info in ({service: [] for service in services} | flag_ids).items()
+        }
+
+        return targets
+
+
+    submitted_flags = set()
+
+
+    def _randomness():
+        import random
+        return \
+            random.choices([FlagStatus.OK, FlagStatus.INVALID, FlagStatus.INACTIVE, FlagStatus.OWNFLAG, FlagStatus.ERROR],
+                           weights=[0.5, 0.2, 0.2, 0.05, 0.1], k=1)[0]
+
+
+    def submit_flags(flags):
+        import time
+        time.sleep(min(len(flags) / 1000, 2))
+        result = {flag: FlagStatus.DUPLICATE if flag in submitted_flags else _randomness() for flag in flags}
+        submitted_flags.update([flag for flag, status in result.items() if status != FlagStatus.ERROR])
+        return [result[flag] for flag in flags]
+kind: ConfigMap
+metadata:
+  labels:
+    io.kompose.service: ctfcode
+  name: ctfcode-cm0

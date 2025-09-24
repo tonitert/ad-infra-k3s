@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../apps/ataka/docker-compose.yml -c --generate-network-policies
+    kompose.version: 1.36.0 (ae2a39403)
+  labels:
+    io.kompose.service: adminer
+  name: adminer
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      io.kompose.service: adminer
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f ../../apps/ataka/docker-compose.yml -c --generate-network-policies
+        kompose.version: 1.36.0 (ae2a39403)
+      labels:
+        io.kompose.network/ataka-ataka: "true"
+        io.kompose.service: adminer
+    spec:
+      containers:
+        - env:
+            - name: ADMINER_DEFAULT_SERVER
+              value: postgres
+          image: adminer:latest
+          name: adminer
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+      hostname: ataka-adminer
+      restartPolicy: Always
