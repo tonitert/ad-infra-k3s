@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: shared
 spec:
+  storageClassName: longhorn
   accessModes:
     - ReadWriteMany
   resources:

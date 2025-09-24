@@ -5,6 +5,7 @@ metadata:
     io.kompose.service: postgres-data
   name: postgres-data
 spec:
+  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
   resources:
