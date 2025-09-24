@@ -1,1 +1,4 @@
 env-secret.yaml
+openvpn-secret.yaml
+*-secret.yaml
+*.ovpn

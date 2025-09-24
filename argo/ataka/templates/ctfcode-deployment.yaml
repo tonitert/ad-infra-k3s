@@ -24,14 +24,50 @@ spec:
         io.kompose.service: ctfcode
     spec:
       containers:
+        # Gluetun VPN sidecar container
+        - name: gluetun
+          image: qmcgaw/gluetun:latest
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: "custom"
+            - name: OPENVPN_CUSTOM_CONFIG
+              value: "/gluetun/custom.conf"
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "fd66:777::/32,fd66:666::/32"
+          volumeMounts:
+            - name: openvpn-config
+              mountPath: /gluetun
+              readOnly: true
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+        # Main application container
         - envFrom:
             - secretRef:
                 name: ataka-env-secret
           image: ghcr.io/tonitert/ad-infra-k3s/ataka-ctfcode:latest
           name: ctfcode
+          # Share network with Gluetun sidecar for VPN routing
           securityContext:
             runAsGroup: 966
             runAsUser: 1000
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
           volumeMounts:
             - mountPath: /ataka/ctfconfig
               name: ctfcode-cm0
@@ -53,3 +89,12 @@ spec:
         - name: shared
           persistentVolumeClaim:
             claimName: shared
+        # OpenVPN configuration volume
+        - name: openvpn-config
+          secret:
+            secretName: openvpn-config
+        # TUN device for VPN
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
