@@ -26,7 +26,7 @@ spec:
       containers:
         - envFrom:
             - secretRef:
-                name: env
+                name: ataka-env-secret
           image: ghcr.io/tonitert/ad-infra-k3s/ataka-ctfcode:latest
           name: ctfcode
           securityContext:
