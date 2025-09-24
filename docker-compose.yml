@@ -48,7 +48,7 @@ services:
       ADMINER_DEFAULT_SERVER: postgres
 
   api:
-    image: openattackdefensetools/ataka-api
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-api:latest
     restart: always
     init: true
     user: $USERID
@@ -72,7 +72,7 @@ services:
       - .env
 
   executor:
-    image: openattackdefensetools/ataka-executor
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
     restart: always
     init: true
     user: $USERID
@@ -106,7 +106,7 @@ services:
       - ataka-exploits
 
   ctfcode:
-    image: openattackdefensetools/ataka-ctfcode
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-ctfcode:latest
     restart: always
     init: true
     user: $USERID
@@ -129,7 +129,7 @@ services:
       - .env
 
   cli:
-    image: openattackdefensetools/ataka-cli
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-cli:latest
     restart: always
     init: true
     user: $USERID

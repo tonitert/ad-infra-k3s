@@ -1,4 +1,5 @@
 FROM python:3.11-slim
+LABEL org.opencontainers.image.source="https://github.com/tonitert/ad-infra-k3s"
 
 RUN pip install --no-cache-dir --upgrade pip
 
