@@ -1,5 +1,4 @@
 apiVersion: v1
-mode: 0555
 data:
   .gitignore: |
     # Byte-compiled / optimized / DLL files
