@@ -51,6 +51,7 @@ spec:
         - configMap:
             name: ctfcode-cm1
           name: ctfcode-cm1
+          defaultMode: 0555
         - name: shared
           persistentVolumeClaim:
             claimName: shared
