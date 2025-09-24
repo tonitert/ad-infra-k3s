@@ -38,7 +38,6 @@ spec:
               readOnly: true
             - mountPath: /ataka/player-cli
               name: ctfcode-cm1
-              readOnly: true
               defaultMode: 0555
               mode: 0555
             - mountPath: /data/shared
