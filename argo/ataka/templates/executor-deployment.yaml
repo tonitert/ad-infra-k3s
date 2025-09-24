@@ -29,10 +29,34 @@ spec:
         io.kompose.network/ataka-ataka: "true"
         io.kompose.service: executor
     spec:
+      initContainers:
+        - image: docker:28.4.0-dind
+          name: dind
+          securityContext:
+            privileged: true
+            runAsGroup: 0
+            runAsUser: 0
+          ports:
+            - containerPort: 2375
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /data/shared
+              name: shared
+            - mountPath: /data/exploits
+              name: exploits
+            - mountPath: /data/persist
+              name: persists
+          resources:
+            requests:
+              cpu: 500m
+              memory: 256Mi
       containers:
         - envFrom:
             - secretRef:
                 name: ataka-env-secret
+          env: 
+            - name: DOCKER_HOST
+              value: tcp://dind:2375
           image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
           name: executor
           command: [ "sh", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.executor" ]
@@ -48,7 +72,7 @@ spec:
               name: persists
           resources:
             requests:
-              cpu: 500m
+              cpu: 100m
               memory: 256Mi
       hostname: ataka-executor
       restartPolicy: Always
