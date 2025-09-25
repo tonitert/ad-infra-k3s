@@ -26,7 +26,7 @@ spec:
       containers:
         # Gluetun VPN sidecar container
         - name: gluetun
-          image: qmcgaw/gluetun:latest
+          image: ghcr.io/qdm12/gluetun # qmcgaw/gluetun
           securityContext:
             capabilities:
               add:
