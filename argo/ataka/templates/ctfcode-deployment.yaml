@@ -32,6 +32,9 @@ spec:
             capabilities:
               add:
                 - NET_ADMIN
+          env: 
+            - name: VPN_FILES
+              value: "vpn.conf"
           volumeMounts:
             - name: openvpn-config
               mountPath: /vpn
@@ -52,7 +55,7 @@ spec:
           image: ghcr.io/tonitert/ad-infra-k3s/ataka-ctfcode:latest
           name: ctfcode
           # Share network with OpenVPN sidecar for VPN routing
-          networkMode: "container:openvpn-client"
+
           securityContext:
             runAsGroup: 966
             runAsUser: 1000
