@@ -37,7 +37,7 @@ spec:
                 - SYS_ADMIN
           env:
             - name: HEALTH_TARGET_ADDRESS
-              value: "submission.faustctf.net:666"
+              value: "fd66:777::1:666"
             - name: VPN_SERVICE_PROVIDER
               value: "custom"
             - name: OPENVPN_CUSTOM_CONFIG
