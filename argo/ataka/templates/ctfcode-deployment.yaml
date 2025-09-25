@@ -30,9 +30,11 @@ spec:
           securityContext:
             runAsUser: 0
             runAsGroup: 0
+            privileged: true
             capabilities:
               add:
                 - NET_ADMIN
+                - SYS_ADMIN
           env:
             - name: VPN_SERVICE_PROVIDER
               value: "custom"
