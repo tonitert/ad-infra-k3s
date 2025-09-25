@@ -35,12 +35,12 @@ spec:
             - name: VPN_SERVICE_PROVIDER
               value: "custom"
             - name: OPENVPN_CUSTOM_CONFIG
-              value: "/gluetun/custom.conf"
+              value: "/etc/openvpn/custom/custom.conf"
             - name: FIREWALL_OUTBOUND_SUBNETS
               value: "fd66:777::/32,fd66:666::/32"
           volumeMounts:
             - name: openvpn-config
-              mountPath: /gluetun
+              mountPath: /etc/openvpn/custom
               readOnly: true
             - name: dev-net-tun
               mountPath: /dev/net/tun
