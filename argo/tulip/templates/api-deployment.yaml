@@ -44,9 +44,16 @@ spec:
             - mountPath: /traffic
               name: traffic
               readOnly: true
+            - mountPath: /services/api/configurations.py
+              name: api-config
+              subPath: configurations.py
+              readOnly: true
       restartPolicy: Always
       volumes:
         - name: traffic
           persistentVolumeClaim:
             claimName: traffic
             readOnly: true
+        - name: api-config
+          configMap:
+            name: api-config
