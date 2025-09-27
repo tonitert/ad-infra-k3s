@@ -35,9 +35,9 @@ data:
 
     traffic_dir = Path(os.getenv("TULIP_TRAFFIC_DIR", "/traffic"))
     dump_pcaps_dir = Path(os.getenv("DUMP_PCAPS", "/traffic"))
-    tick_length = os.getenv("TICK_LENGTH", 2*60*1000)
+    tick_length = os.getenv("TICK_LENGTH", 3*60*1000)
     flag_lifetime = os.getenv("FLAG_LIFETIME", 5)
-    start_date = os.getenv("TICK_START", "2018-06-27T13:00:00+02:00")
+    start_date = os.getenv("TICK_START", "2015-09-27T00:00:00+03:00")
     flag_regex = os.getenv("FLAG_REGEX", "FAUST_[A-Za-z0-9/+]{32}")
     vm_ip = os.getenv("VM_IP", "fd66:666:663::2")
     visualizer_url = os.getenv("VISUALIZER_URL", "http://127.0.0.1:1337")
