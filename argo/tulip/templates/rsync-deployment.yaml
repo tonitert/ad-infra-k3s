@@ -29,7 +29,7 @@ spec:
             - mountPath: /traffic
               name: traffic
               readOnly: false
-            - mountPath: /data
+            - mountPath: /root/.ssh
               name: rsync-keys
           # Add resource limits to prevent excessive resource usage
           resources:
