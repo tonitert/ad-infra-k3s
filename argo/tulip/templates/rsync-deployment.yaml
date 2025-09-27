@@ -20,7 +20,7 @@ spec:
         - env:
             # Cron task for periodic rsync - this is how eeacms/rsync actually works
             - name: CRON_TASK_1
-              value: "*/5 * * * * rsync -avz --delete --stats root@168.119.122.165:/pcaps/ /traffic/"
+              value: "* * * * * rsync -avz --delete --stats root@168.119.122.165:/pcaps/ /traffic/"
           image: eeacms/rsync:latest
           name: rsync
           # Run in client mode to execute cron tasks
