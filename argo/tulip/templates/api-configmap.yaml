@@ -44,14 +44,13 @@ data:
 
     vm_ip_1 = "fd66:666:663::2"
     helper = '''
-    fd66:666:663::2:1237 CyberUni 4
-    fd66:666:663::2:1236 CyberUni 3
-    fd66:666:663::2:1235 CyberUni 1
-    fd66:666:663::2:1234 CyberUni 2
-    fd66:666:663::2:3003 ClosedSea 1
-    fd66:666:663::2:3004 ClosedSea 2
-    fd66:666:663::2:5000 Test
-    fd66:666:663::2:1337 RPN
+    fd66:666:663::2:3000 birthdaygram
+    fd66:666:663::2:4321 cake-configurator
+    fd66:666:663::2:7422 birthday-melody
+    fd66:666:663::2:1122 evoting-collector
+    fd66:666:663::2:1133 evoting-aggregator
+    fd66:666:663::2:1144 evoting-frontend
+    fd66:666:663::2:8080 nom
     '''
 
     services = [{"ip": x.split(" ")[0].rsplit(':', 1)[0], "port": int(x.split(" ")[0].rsplit(':', 1)[1]), "name": " ".join(x.split(" ")[1:])} for x in helper.strip().split("\n")]
