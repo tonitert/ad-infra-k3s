@@ -1,6 +1,34 @@
 # This file is maintained automatically by "terraform init".
 # Manual edits may be lost in future updates.
 
+provider "registry.terraform.io/anapsix/semvers" {
+  version     = "0.7.1"
+  constraints = ">= 0.7.1"
+  hashes = [
+    "h1:muej1ceXoABJVeyCSQa42xSfRCCOYuX+HGNYaa91cdo=",
+    "zh:049fa2bc555b1264427296c55462c24151aedd251ec32673e7775c451c5b0339",
+    "zh:18d72a3d0e3e502ea68e477396651922e59d97ddaeda132004ca6bc8e13334ed",
+    "zh:20cacd13b826250ce29e19691492e958db95fd8e66163bb6402050f791f82c93",
+    "zh:3d13be2d81197f66e69d544c7b708184a4f0341b3fd413a76ec7ff37dbd67999",
+    "zh:408012764fab3b5d79751ff1c3413dc17ff02a0b1e64655e131218b5a2c970da",
+    "zh:416c589984585c19952e75866a08a7299c9a2eeb81b015302962bbe09004484a",
+    "zh:4227a3dcac531608b6b89a2db5f40e99def6864c24b5e8f3e04c15290e2233dd",
+    "zh:6c1f4226a2fa7ee74c87974f0b5b1420668541d614a958744e17090ea0e6476e",
+    "zh:90c381aab648cd7507e93725c2bed847c91d2b186eaff09193adec771e689a5c",
+    "zh:9aa5755bdadff19265f3a434fcadc4a04cd622a40bac7381b5a6ac74b4d5fe8f",
+    "zh:ac6b01165bc361ddff7d3392311ea494aa6af2d089ab0b43b48f24ac949612ae",
+    "zh:ba589c0dfa18929244578f02c2d9f4a4c32c79cb57cd9c3ad7e8cbe123cc98fa",
+    "zh:bc0f3ff5b24e1d2ccf8e1e85fb0f931fd58e1ddaac4abe6b07f94844a1425cd1",
+    "zh:ced293727d8d91f7ddf85d07c897d23c0a3188251d1065dea5a65342637c5853",
+    "zh:d3f92af0ee440a540826a61a7b07f30d0155ddc40d70484d1c68c5abdbdabed2",
+    "zh:d4736f830f2913ba018868fe888a267441b33d1ecb8275ce941fb60150dd60f3",
+    "zh:df202a4bf895a3a60fdcd39a55296c95e44d3ce300cf6ce3e3e12744c24a941c",
+    "zh:ec198fa89c5039e3a41dfe0a704e9428389a2f663a69dc438136945887cc6711",
+    "zh:f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32",
+    "zh:fe0d8d1bbe515d52b04b01cb93f3cdd25fb3f74833d5e62b3a7ea40ea8f229bf",
+  ]
+}
+
 provider "registry.terraform.io/cloudflare/cloudflare" {
   version     = "5.9.0"
   constraints = "~> 5.9"

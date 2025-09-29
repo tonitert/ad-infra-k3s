@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 echo "Loading kubeconfig..."
 
 terraform output --raw kubeconfig > clustername_kubeconfig.yaml
@@ -10,7 +12,7 @@ export KUBECONFIG=$(pwd)/clustername_kubeconfig.yaml
 echo "Generating sealed secrets..."
 
 # Create output directory for sealed secrets in argo directory
-mkdir -p /argo/secrets
+mkdir -p argo/secrets
 
 # Process each template file dynamically
 for template_file in secrets/chart/templates/*.yaml; do
