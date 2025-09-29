@@ -37,8 +37,8 @@ spec:
               cpu: "500m"
               memory: "512Mi"
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "10m"
+              memory: "50Mi"
       restartPolicy: Always
       volumes:
         - name: traffic
