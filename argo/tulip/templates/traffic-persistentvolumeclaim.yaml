@@ -9,6 +9,6 @@ spec:
     - ReadWriteMany
   resources:
     limits:
-      storage: 10G
+      storage: 40G
     requests:
       storage: 100M

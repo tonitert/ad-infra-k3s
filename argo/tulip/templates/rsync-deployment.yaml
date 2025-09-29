@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: rsync
+  name: rsync
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: rsync
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: rsync
+    spec:
+      containers:
+        - env:
+            # Cron task for periodic rsync - this is how eeacms/rsync actually works
+            - name: CRON_TASK_1
+              value: "* * * * * rsync -avz --delete --stats root@168.119.122.165:/pcaps/ /traffic/"
+          image: eeacms/rsync:latest
+          name: rsync
+          # Run in client mode to execute cron tasks
+          args: ["client"]
+          volumeMounts:
+            - mountPath: /traffic
+              name: traffic
+              readOnly: false
+            - mountPath: /root/.ssh
+              name: rsync-keys
+          # Add resource limits to prevent excessive resource usage
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "10m"
+              memory: "50Mi"
+      restartPolicy: Always
+      volumes:
+        - name: traffic
+          persistentVolumeClaim:
+            claimName: traffic
+            readOnly: false
+        - name: rsync-keys
+          persistentVolumeClaim:
+            claimName: rsync-keys
+            readOnly: false

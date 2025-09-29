@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tulip-config
+  namespace: tulip
+data:
+  # Tulip config
+  TIMESCALE: "postgres://tulip@timescale:5432/tulip"
+  TRAFFIC_DIR_DOCKER: "/traffic"
+  VISUALIZER_URL: "http://scraper.example.com"
+  
+  # Game config
+  TICK_START: "2024-11-30T13:00:00Z"
+  TICK_LENGTH: "180000"
+  FLAG_REGEX: "SAAR\\{[A-Za-z0-9_-]{32}\\}"
+  VM_IP: "10.10.3.1"
+  TEAM_ID: "3"
+  
+  # PCAP_OVER_IP CONFIGS
+  PCAP_OVER_IP: ""
+  
+  # DUMP_PCAPS CONFIGS
+  DUMP_PCAPS: ""
+  DUMP_PCAPS_INTERVAL: "1m"
+  DUMP_PCAPS_FILENAME: "2006-01-02_15-04-05.pcap"
+  
+  # FLAGID CONFIGS
+  FLAGID_SCRAPE: ""
+  FLAGID_SCAN: ""
+  FLAG_LIFETIME: ""
+  FLAGID_ENDPOINT: "http://flagidendpoint:8000/flagids.json"
+  
+  # FLAG_VALIDATOR CONFIGS
+  FLAG_VALIDATOR_TYPE: ""
+  FLAG_VALIDATOR_TEAM: "42"

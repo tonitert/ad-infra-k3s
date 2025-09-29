@@ -33,32 +33,22 @@ spec:
             - -disable-converters
             - -dir
             - /traffic
-          env:
-            - name: DUMP_PCAPS
-            - name: DUMP_PCAPS_FILENAME
-              value: 2006-01-02_15-04-05.pcap
-            - name: DUMP_PCAPS_INTERVAL
-              value: 1m
-            - name: FLAGID_SCAN
-            - name: FLAG_LIFETIME
-            - name: FLAG_REGEX
-              value: '[A-Z0-9]{31}='
-            - name: FLAG_VALIDATOR_TEAM
-              value: "42"
-            - name: FLAG_VALIDATOR_TYPE
-            - name: PCAP_OVER_IP
-            - name: TICK_LENGTH
-              value: "180000"
-            - name: TICK_START
-              value: "2024-11-30T13:00:00Z"
-            - name: TIMESCALE
-              value: postgres://tulip@timescale:5432/tulip
+          envFrom:
+            - configMapRef:
+                name: tulip-config
           image: ghcr.io/tonitert/ad-infra-k3s/tulip-assembler:latest
           name: assembler
           volumeMounts:
             - mountPath: /traffic
               name: traffic
               readOnly: true
+          resources:
+            requests:
+              memory: "128m"
+              cpu: "100m"
+            limits:
+              memory: "2048m"
+              cpu: "2000m"
       restartPolicy: Always
       volumes:
         - name: traffic
