@@ -610,7 +610,7 @@ module "kube-hetzner" {
   # ⚠️ If you are going to use Rancher addons for instance, it's always a good idea to fix the kube version to one minor version below the latest stable,
   #     e.g. v1.29 instead of the stable v1.30.
   # The default is "v1.30".
-  initial_k3s_channel = "v1.34"
+  initial_k3s_channel = "stable"
 
   # Allows to specify the version of the System Upgrade Controller for automated upgrades of k3s
   # See https://github.com/rancher/system-upgrade-controller/releases for the available versions.
