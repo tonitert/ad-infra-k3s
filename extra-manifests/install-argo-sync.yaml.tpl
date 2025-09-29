@@ -5,6 +5,8 @@ metadata:
   namespace: argocd
 spec:
   project: default
+  syncPolicy:
+    automated: {}
   source:
     path: argo/argo
     repoURL: '${repo_url}'
