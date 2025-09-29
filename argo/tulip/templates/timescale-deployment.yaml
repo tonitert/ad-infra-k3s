@@ -40,6 +40,13 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: timescale-data
+          resources:
+            requests:
+              memory: "128m"
+              cpu: "50m"
+            limits:
+              memory: "1024m"
+              cpu: "1500m"
       restartPolicy: Always
       volumes:
         - name: timescale-data
