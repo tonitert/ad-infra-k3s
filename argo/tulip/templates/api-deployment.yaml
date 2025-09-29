@@ -25,19 +25,12 @@ spec:
         io.kompose.service: api
     spec:
       containers:
-        - env:
-            - name: FLAG_REGEX
-              value: '[A-Z0-9]{31}='
-            - name: TICK_LENGTH
-              value: "180000"
-            - name: TICK_START
-              value: "2024-11-30T13:00:00Z"
-            - name: TIMESCALE
-              value: postgres://tulip@timescale:5432/tulip
+        - envFrom:
+            - configMapRef:
+                name: tulip-config
+          env:
             - name: TULIP_TRAFFIC_DIR
               value: /traffic
-            - name: VM_IP
-              value: 10.10.3.1
           image: ghcr.io/tonitert/ad-infra-k3s/tulip-api:latest
           name: api
           volumeMounts:

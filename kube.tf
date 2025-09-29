@@ -22,7 +22,7 @@ module "kube-hetzner" {
   # source = "./kube-hetzner"
   #    When using the terraform registry as source, you can optionally specify a version number.
   #    See https://registry.terraform.io/modules/kube-hetzner/kube-hetzner/hcloud for the available versions
-  version = "2.18.1"
+  version = "2.18.2"
   # 2. For local dev, path to the git repo
   # source = "../../kube-hetzner/"
   # 3. If you want to use the latest master branch (see https://developer.hashicorp.com/terraform/language/modules/sources#github), use
@@ -123,11 +123,11 @@ module "kube-hetzner" {
   control_plane_nodepools = [
     {
       name        = "control-plane-hel1",
-      server_type = "cx22",
+      server_type = "cx32",
       location    = "hel1",
       labels      = [],
       taints      = [],
-      count       = 3
+      count       = 1
 
       # Fine-grained control over placement groups (nodes in the same group are spread over different physical servers, 10 nodes per placement group max):
       # placement_group = "default"
@@ -441,7 +441,7 @@ module "kube-hetzner" {
   # longhorn_fstype = "xfs"
 
   # how many replica volumes should longhorn create (default is 3).
-  # longhorn_replica_count = 1
+  longhorn_replica_count = 1
 
   # When you enable Longhorn, you can go with the default settings and just modify the above two variables OR you can add a longhorn_values variable
   # with all needed helm values, see towards the end of the file in the advanced section.
@@ -467,7 +467,7 @@ module "kube-hetzner" {
 
   # If you want to specify the Kured version, set it below - otherwise it'll use the latest version available.
   # See https://github.com/kubereboot/kured/releases for the available versions.
-  kured_version = "1.19.0"
+  # kured_version = "1.19.0"
 
   # Default is "traefik".
   # If you want to enable the Nginx (https://kubernetes.github.io/ingress-nginx/) or HAProxy ingress controller instead of Traefik, you can set this to "nginx" or "haproxy".
@@ -567,7 +567,7 @@ module "kube-hetzner" {
   # For production use, always use an HA setup with at least 3 control-plane nodes and 2 agents, and keep this on for maximum security.
 
   # The default is "true" (in HA setup i.e. at least 3 control plane nodes & 2 agents, just keep it enabled since it works flawlessly).
-  automatically_upgrade_k3s = true
+  # automatically_upgrade_k3s = true
 
   # By default nodes are drained before k3s upgrade, which will delete and transfer all pods to other nodes.
   # Set this to false to cordon nodes instead, which just prevents scheduling new pods on the node during upgrade
@@ -584,7 +584,7 @@ module "kube-hetzner" {
 
   # The default is "true" (in HA setup it works wonderfully well, with automatic roll-back to the previous snapshot in case of an issue).
   # IMPORTANT! For non-HA clusters i.e. when the number of control-plane nodes is < 3, you have to turn it off.
-  # automatically_upgrade_os = false
+  automatically_upgrade_os = false
 
   # If you need more control over kured and the reboot behaviour, you can pass additional options to kured.
   # For example limiting reboots to certain timeframes. For all options see: https://kured.dev/docs/configuration/
@@ -610,7 +610,7 @@ module "kube-hetzner" {
   # ⚠️ If you are going to use Rancher addons for instance, it's always a good idea to fix the kube version to one minor version below the latest stable,
   #     e.g. v1.29 instead of the stable v1.30.
   # The default is "v1.30".
-  initial_k3s_channel = "v1.33"
+  initial_k3s_channel = "v1.34"
 
   # Allows to specify the version of the System Upgrade Controller for automated upgrades of k3s
   # See https://github.com/rancher/system-upgrade-controller/releases for the available versions.
@@ -733,24 +733,16 @@ module "kube-hetzner" {
 
   # Adding extra firewall rules, like opening a port
   # More info on the format here https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/firewall
-  # extra_firewall_rules = [
-  #   {
-  #     description = "For Postgres"
-  #     direction       = "in"
-  #     protocol        = "tcp"
-  #     port            = "5432"
-  #     source_ips      = ["0.0.0.0/0", "::/0"]
-  #     destination_ips = [] # Won't be used for this rule
-  #   },
-  #   {
-  #     description = "To Allow ArgoCD access to resources via SSH"
-  #     direction       = "out"
-  #     protocol        = "tcp"
-  #     port            = "22"
-  #     source_ips      = [] # Won't be used for this rule
-  #     destination_ips = ["0.0.0.0/0", "::/0"]
-  #   }
-  # ]
+  extra_firewall_rules = [
+    {
+      description = "Allow SSH for rsync"
+      direction       = "out"
+      protocol        = "tcp"
+      port            = "22"
+      source_ips      = [] # Won't be used for this rule
+      destination_ips = ["0.0.0.0/0", "::/0"]
+    }
+  ]
 
   # If you want to configure a different CNI for k3s, use this flag
   # possible values: flannel (Default), calico, and cilium
@@ -1034,14 +1026,12 @@ controller:
 
   # Longhorn, all Longhorn helm values can be found at https://github.com/longhorn/longhorn/blob/master/chart/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
-  /*   longhorn_values = <<EOT
-defaultSettings:
-  defaultDataPath: /var/longhorn
+longhorn_values = <<EOT
 persistence:
   defaultFsType: ext4
-  defaultClassReplicaCount: 3
-  defaultClass: true
-  EOT */
+  defaultClassReplicaCount: 1
+  defaultClass: false
+  EOT
 
   # If you want to use a specific Traefik helm chart version, set it below; otherwise, leave them as-is for the latest versions.
   # See https://github.com/traefik/traefik-helm-chart/releases for the available versions.

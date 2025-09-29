@@ -30,9 +30,9 @@ spec:
             - ./enricher
             - -eve
             - /traffic/eve.json
-          env:
-            - name: TIMESCALE
-              value: postgres://tulip@timescale:5432/tulip
+          envFrom:
+            - configMapRef:
+                name: tulip-config
           image: ghcr.io/tonitert/ad-infra-k3s/tulip-enricher:latest
           name: enricher
           volumeMounts:

@@ -11,4 +11,4 @@ spec:
     limits:
       storage: 40G
     requests:
-      storage: 40G
+      storage: 100M
