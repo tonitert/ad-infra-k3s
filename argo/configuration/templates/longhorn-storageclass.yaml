@@ -5,7 +5,6 @@ metadata:
 provisioner: driver.longhorn.io
 allowVolumeExpansion: true
 parameters:
-  nodeSelector: "node-storage"
   numberOfReplicas: "1"
   staleReplicaTimeout: "2880" # 48 hours in minutes
   fromBackup: ""
