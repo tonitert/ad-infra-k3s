@@ -13,5 +13,9 @@ terraform {
         source  = "cloudflare/cloudflare"
         version = "~> 5.9"
       }
+      tls = {
+        source  = "hashicorp/tls"
+        version = "~> 4.1"
+      }
     }
 }

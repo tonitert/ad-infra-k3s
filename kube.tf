@@ -7,6 +7,11 @@ locals {
   hcloud_token = "xxxxxxxxxxx"
 }
 
+# Generate SSH key pair using TLS provider
+resource "tls_private_key" "ssh_key" {
+  algorithm = "ED25519"
+}
+
 module "kube-hetzner" {
   providers = {
     hcloud = hcloud
@@ -22,7 +27,7 @@ module "kube-hetzner" {
   # source = "./kube-hetzner"
   #    When using the terraform registry as source, you can optionally specify a version number.
   #    See https://registry.terraform.io/modules/kube-hetzner/kube-hetzner/hcloud for the available versions
-  version = "2.18.2"
+  version = "2.18.4"
   # 2. For local dev, path to the git repo
   # source = "../../kube-hetzner/"
   # 3. If you want to use the latest master branch (see https://developer.hashicorp.com/terraform/language/modules/sources#github), use
@@ -36,10 +41,10 @@ module "kube-hetzner" {
   # ssh_port = 2222
 
   # * Your ssh public key
-  ssh_public_key = file(var.ssh_key_path != "" ? "${var.ssh_key_path}.pub" : "./keys/ssh.pub")
+  ssh_public_key = var.ssh_key_path != "" ? file("${var.ssh_key_path}.pub") : tls_private_key.ssh_key.public_key_openssh
   # * Your private key must be "ssh_private_key = null" when you want to use ssh-agent for a Yubikey-like device authentication or an SSH key-pair with a passphrase.
   # For more details on SSH see https://github.com/kube-hetzner/kube-hetzner/blob/master/docs/ssh.md
-  ssh_private_key = file(var.ssh_key_path != "" ? var.ssh_key_path : "./keys/ssh")
+  ssh_private_key = var.ssh_key_path != "" ? file(var.ssh_key_path) : tls_private_key.ssh_key.private_key_openssh
   # You can add additional SSH public Keys to grant other team members root access to your cluster nodes.
   ssh_additional_public_keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPxx9gWelsnyCU+WJ95XovyNPgr3TYrByhOr54kl5ukV tonit@tonipc" ]
 
