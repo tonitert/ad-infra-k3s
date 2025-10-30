@@ -5,11 +5,12 @@ metadata:
     io.kompose.service: timescale-data
   name: timescale-data
   namespace: tulip
+  storageClassName: longhorn-expand
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     limits:
-      storage: 100G
+      storage: 40G
     requests:
-      storage: 100M
+      storage: 35G
