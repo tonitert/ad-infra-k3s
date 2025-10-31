@@ -20,7 +20,7 @@ spec:
         - env:
             # Cron task for periodic rsync - this is how eeacms/rsync actually works
             - name: CRON_TASK_1
-              value: "* * * * * rsync -e \"ssh -o StrictHostKeyChecking=no\" -avz --stats --delete --files-from=<(find /pcaps -mmin -30 -type f -exec basename {} \\;) root@46.62.145.1:/pcaps/ /traffic/"
+              value: "* * * * * rsync -e \"ssh -o StrictHostKeyChecking=no\" -avz --stats --delete --files-from=<(ssh root@46.62.145.1 \"find /pcaps -mmin -30 -type f -exec basename {} \\;\") root@46.62.145.1:/pcaps/ /traffic/"
           image: eeacms/rsync:latest
           name: rsync
           # Run in client mode to execute cron tasks
