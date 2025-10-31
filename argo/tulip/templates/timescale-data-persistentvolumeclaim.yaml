@@ -6,7 +6,6 @@ metadata:
   name: timescale-data
   namespace: tulip
 spec:
-  storageClassName: longhorn-expand
   accessModes:
     - ReadWriteOnce
   storageClassName: hcloud-volumes
