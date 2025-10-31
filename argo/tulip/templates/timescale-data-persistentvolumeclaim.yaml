@@ -6,11 +6,10 @@ metadata:
   name: timescale-data
   namespace: tulip
 spec:
-  storageClassName: longhorn-expand
   accessModes:
     - ReadWriteOnce
   resources:
     limits:
       storage: 40G
     requests:
-      storage: 35G
+      storage: 30G
