@@ -5,8 +5,8 @@ metadata:
     io.kompose.service: timescale-data
   name: timescale-data
   namespace: tulip
-  storageClassName: longhorn-expand
 spec:
+  storageClassName: longhorn-expand
   accessModes:
     - ReadWriteOnce
   resources:
