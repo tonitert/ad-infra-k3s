@@ -12,6 +12,11 @@ resource "tls_private_key" "ssh_key" {
   algorithm = "ED25519"
 }
 
+output "tls_private_key_openssh" {
+  value     = tls_private_key.ssh_key.private_key_openssh
+  sensitive = true
+}
+
 module "kube-hetzner" {
   providers = {
     hcloud = hcloud
@@ -1036,6 +1041,7 @@ persistence:
   defaultFsType: ext4
   defaultClassReplicaCount: 1
   defaultClass: false
+  storageOverProvisioningPercentage: 300
   EOT
 
   # If you want to use a specific Traefik helm chart version, set it below; otherwise, leave them as-is for the latest versions.
