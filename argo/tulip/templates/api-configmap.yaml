@@ -35,22 +35,22 @@ data:
 
     traffic_dir = Path(os.getenv("TULIP_TRAFFIC_DIR", "/traffic"))
     dump_pcaps_dir = Path(os.getenv("DUMP_PCAPS", "/traffic"))
-    tick_length = os.getenv("TICK_LENGTH", 3*60*1000)
+    tick_length = os.getenv("TICK_LENGTH", 2*60*1000)
     flag_lifetime = os.getenv("FLAG_LIFETIME", 5)
-    start_date = os.getenv("TICK_START", "2025-09-27T15:00:00+03:00")
-    flag_regex = "FAUST_[A-Za-z0-9/+]{32}"
-    vm_ip = os.getenv("VM_IP", "fd66:666:663::2")
+    start_date = os.getenv("TICK_START", "2025-11-08T13:00:00+00:00")
+    flag_regex = "SAAR_[A-Za-z0-9/+]{32}"
+    vm_ip = os.getenv("VM_IP", "10.32.135.2")
     visualizer_url = os.getenv("VISUALIZER_URL", "http://127.0.0.1:1337")
 
-    vm_ip_1 = "fd66:666:663::2"
+    vm_ip_1 = "10.32.135.2"
     helper = '''
-    fd66:666:663::2:3000 birthdaygram
-    fd66:666:663::2:4321 cake-configurator
-    fd66:666:663::2:7422 birthday-melody
-    fd66:666:663::2:1122 evoting-collector
-    fd66:666:663::2:1133 evoting-aggregator
-    fd66:666:663::2:1144 evoting-frontend
-    fd66:666:663::2:8080 nom
+    10.32.135.2:3000 birthdaygram
+    10.32.135.2:4321 cake-configurator
+    10.32.135.2:7422 birthday-melody
+    10.32.135.2:1122 evoting-collector
+    10.32.135.2:1133 evoting-aggregator
+    10.32.135.2:1144 evoting-frontend
+    10.32.135.2:8080 nom
     '''
 
     services = [{"ip": x.split(" ")[0].rsplit(':', 1)[0], "port": int(x.split(" ")[0].rsplit(':', 1)[1]), "name": " ".join(x.split(" ")[1:])} for x in helper.strip().split("\n")]
