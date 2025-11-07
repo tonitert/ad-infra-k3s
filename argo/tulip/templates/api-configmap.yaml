@@ -38,7 +38,7 @@ data:
     tick_length = os.getenv("TICK_LENGTH", 2*60*1000)
     flag_lifetime = os.getenv("FLAG_LIFETIME", 5)
     start_date = os.getenv("TICK_START", "2025-11-08T13:00:00+00:00")
-    flag_regex = "SAAR_[A-Za-z0-9/+]{32}"
+    flag_regex = "SAAR\{[A-Za-z0-9_-]{32}\}"
     vm_ip = os.getenv("VM_IP", "10.32.135.2")
     visualizer_url = os.getenv("VISUALIZER_URL", "http://127.0.0.1:1337")
 

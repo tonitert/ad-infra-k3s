@@ -10,11 +10,11 @@ data:
   VISUALIZER_URL: "http://scraper.example.com"
   
   # Game config
-  TICK_START: "2024-11-30T13:00:00Z"
-  TICK_LENGTH: "180000"
-  FLAG_REGEX: "SAAR\\{[A-Za-z0-9_-]{32}\\}"
-  VM_IP: "10.10.3.1"
-  TEAM_ID: "3"
+  TICK_START: "2025-11-08T13:00:00Z"
+  TICK_LENGTH: "120000"
+  FLAG_REGEX: "SAAR\{[A-Za-z0-9_-]{32}\}"
+  VM_IP: "10.32.135.2"
+  TEAM_ID: "135"
   
   # PCAP_OVER_IP CONFIGS
   PCAP_OVER_IP: ""
@@ -25,11 +25,11 @@ data:
   DUMP_PCAPS_FILENAME: "2006-01-02_15-04-05.pcap"
   
   # FLAGID CONFIGS
-  FLAGID_SCRAPE: ""
-  FLAGID_SCAN: ""
-  FLAG_LIFETIME: ""
-  FLAGID_ENDPOINT: "http://flagidendpoint:8000/flagids.json"
+  FLAGID_SCRAPE: "1"
+  FLAGID_SCAN: "SAAR\{[A-Za-z0-9_-]{32}\}"
+  FLAG_LIFETIME: "10"
+  FLAGID_ENDPOINT: "https://scoreboard.ctf.saarland/api/attack.json"
   
   # FLAG_VALIDATOR CONFIGS
   FLAG_VALIDATOR_TYPE: ""
-  FLAG_VALIDATOR_TEAM: "42"
+  FLAG_VALIDATOR_TEAM: ""
