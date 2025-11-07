@@ -12,7 +12,7 @@ data:
   # Game config
   TICK_START: "2025-11-08T13:00:00Z"
   TICK_LENGTH: "120000"
-  FLAG_REGEX: "SAAR\{[A-Za-z0-9_-]{32}\}"
+  FLAG_REGEX: "SAAR\\{[A-Za-z0-9_-]{32}\\}"
   VM_IP: "10.32.135.2"
   TEAM_ID: "135"
   
@@ -26,7 +26,7 @@ data:
   
   # FLAGID CONFIGS
   FLAGID_SCRAPE: "1"
-  FLAGID_SCAN: "SAAR\{[A-Za-z0-9_-]{32}\}"
+  FLAGID_SCAN: "SAAR\\{[A-Za-z0-9_-]{32}\\}"
   FLAG_LIFETIME: "10"
   FLAGID_ENDPOINT: "https://scoreboard.ctf.saarland/api/attack.json"
   
