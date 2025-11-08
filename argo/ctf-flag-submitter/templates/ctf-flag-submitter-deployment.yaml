@@ -198,7 +198,7 @@ spec:
         - --repo=git@github.com:Intruders-FAUST/saarCTF-2025-exploits.git
         - --ref=main
         - --root=/git
-        - --link=scripts
+        - --link=/scripts
         - --period=30s
         - --ssh-key-file=/etc/git-secret/id_rsa
         - --ssh-known-hosts=false
@@ -206,7 +206,7 @@ spec:
         - --verbose=1
         volumeMounts:
         - name: scripts
-          mountPath: /git/scripts
+          mountPath: /scripts
         - name: git-deploy-key
           mountPath: /etc/git-secret
           readOnly: true
