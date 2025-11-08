@@ -185,7 +185,7 @@ spec:
           value: "production"
         volumeMounts:
         - name: scripts
-          mountPath: /app/
+          mountPath: /app/scripts
         resources:
           requests:
             memory: "100Mi"
@@ -206,7 +206,7 @@ spec:
         - --verbose=1
         volumeMounts:
         - name: scripts
-          mountPath: /git
+          mountPath: /git/
         - name: git-deploy-key
           mountPath: /etc/git-secret
           readOnly: true
