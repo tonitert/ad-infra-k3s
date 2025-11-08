@@ -53,7 +53,7 @@ data:
     10.32.135.2:1835 rceaas
     10.32.135.2:12935 licenser
     10.32.135.2:51349 saarlandcryptogalore
-    10.32.135.2:6666 calendar?
+    10.32.135.2:6666 no-service
     '''
 
     services = [{"ip": x.split(" ")[0].rsplit(':', 1)[0], "port": int(x.split(" ")[0].rsplit(':', 1)[1]), "name": " ".join(x.split(" ")[1:])} for x in helper.strip().split("\n")]
