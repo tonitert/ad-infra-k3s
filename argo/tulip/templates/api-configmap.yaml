@@ -44,13 +44,14 @@ data:
 
     vm_ip_1 = "10.32.135.2"
     helper = '''
-    10.32.135.2:3000 birthdaygram
-    10.32.135.2:4321 cake-configurator
-    10.32.135.2:7422 birthday-melody
-    10.32.135.2:1122 evoting-collector
-    10.32.135.2:1133 evoting-aggregator
-    10.32.135.2:1144 evoting-frontend
-    10.32.135.2:8080 nom
+    10.32.135.2:443 routerploit
+    10.32.135.2:8082 sssg
+    10.32.135.2:1337 blockrope
+    10.32.135.2:8086 caddy?
+    10.32.135.2:8081 apache?
+    10.32.135.2:1835 rceaas
+    10.32.135.2:12935 licenser
+    10.32.135.2:51349 saarlandcryptogalore
     '''
 
     services = [{"ip": x.split(" ")[0].rsplit(':', 1)[0], "port": int(x.split(" ")[0].rsplit(':', 1)[1]), "name": " ".join(x.split(" ")[1:])} for x in helper.strip().split("\n")]

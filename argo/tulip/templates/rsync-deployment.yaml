@@ -204,7 +204,7 @@ spec:
       - env:
           # Cron task for periodic rsync - this is how eeacms/rsync actually works
           - name: CRON_TASK_1
-            value: "*/2 * * * * flock -n /var/lock/rsync.lock -c \"ssh root@10.32.135.2 'find /pcaps -mmin -30 -type f -printf \\\"%P\\\\n\\\"' | rsync -e 'ssh -o StrictHostKeyChecking=no' -avz --stats --delete --files-from=- root@10.32.135.2:/pcaps/ /traffic/\""
+            value: "*/2 * * * * flock -n /var/lock/rsync.lock -c \"ssh root@91.98.225.214 'find /pcaps -mmin -30 -type f -printf \\\"%P\\\\n\\\"' | rsync -e 'ssh -o StrictHostKeyChecking=no' -avz --stats --delete --files-from=- root@91.98.225.214:/pcaps/ /traffic/\""
         image: eeacms/rsync:latest
         name: rsync
         # Run in client mode to execute cron tasks
