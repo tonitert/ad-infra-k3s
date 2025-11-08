@@ -17,6 +17,73 @@ spec:
       labels:
         io.kompose.service: rsync
     spec:
+      # WireGuard sidecar container (must be first to maintain network)
+      initContainers:
+      - name: wireguard-init
+        image: lscr.io/linuxserver/wireguard:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "=== WireGuard Init Container ==="
+          echo "Kernel version: $(uname -r)"
+          
+          # Check if wireguard module is available
+          if ! modprobe wireguard 2>/dev/null; then
+            echo "WARNING: Could not load wireguard module, but will try to continue"
+          fi
+          
+          # The linuxserver image uses s6 overlay and expects configs in /config
+          # Copy our config to the expected location
+          mkdir -p /config/wg_confs
+          cp /tmp/wireguard/wg0.conf /config/wg_confs/wg0.conf
+          
+          # Bring up WireGuard interface using wg-quick
+          echo "=== Bringing up WireGuard interface ==="
+          wg-quick up /config/wg_confs/wg0.conf
+          
+          # Get the WireGuard interface IP
+          WG_IP=$(ip -4 addr show wg0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+          echo "WireGuard IP: $WG_IP"
+          
+          # Enable IP forwarding
+          echo 1 > /proc/sys/net/ipv4/ip_forward
+          sysctl -w net.ipv4.conf.all.src_valid_mark=1
+          echo "IP forwarding and src_valid_mark enabled"
+          
+          # Set up NAT (MASQUERADE is more flexible than SNAT)
+          echo "=== Setting up NAT rules ==="
+          iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+          
+          # Verify NAT rules
+          echo "=== NAT Rules ==="
+          iptables -t nat -L POSTROUTING -n -v
+          
+          # Verify WireGuard is up
+          echo "=== WireGuard Status ==="
+          wg show
+          
+          # Check routing table
+          echo "=== Routing Table ==="
+          ip route show
+          
+          echo "=== Initialization complete ==="
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_MODULE
+          privileged: true
+        volumeMounts:
+        - name: wireguard-config
+          mountPath: /tmp/wireguard/wg0.conf
+          subPath: wg0.conf
+        - name: wireguard-data
+          mountPath: /config
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
       containers:
         - env:
             # Cron task for periodic rsync - this is how eeacms/rsync actually works
@@ -44,6 +111,118 @@ spec:
             requests:
               cpu: "10m"
               memory: "50Mi"
+        # WireGuard sidecar container (must be first to maintain network)
+      - name: wireguard
+        image: lscr.io/linuxserver/wireguard:latest
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_MODULE
+          privileged: true
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Europe/London"
+        volumeMounts:
+        - name: wireguard-config
+          mountPath: /config/wg_confs/wg0.conf
+          subPath: wg0.conf
+        - name: wireguard-data
+          mountPath: /config
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        command:
+        - sh
+        - -c
+        - |
+          echo "=== WireGuard sidecar starting ==="
+          
+          # Ensure sysctl is set
+          sysctl -w net.ipv4.conf.all.src_valid_mark=1 || true
+          
+          # Function to maintain NAT and forwarding
+          maintain_config() {
+            # Ensure IP forwarding is enabled
+            if [ "$(cat /proc/sys/net/ipv4/ip_forward)" != "1" ]; then
+              echo "Re-enabling IP forwarding"
+              echo 1 > /proc/sys/net/ipv4/ip_forward
+            fi
+            
+            # Check if NAT rule exists
+            if ! iptables -t nat -C POSTROUTING -o wg0 -j MASQUERADE 2>/dev/null; then
+              echo "Re-adding NAT rule"
+              iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+            fi
+          }
+          
+          # Main monitoring loop
+          while true; do
+            echo "=== $(date) ==="
+            echo "WireGuard Status:"
+            wg show wg0 2>/dev/null || echo "wg0 interface not found"
+            echo ""
+            echo "NAT Rules:"
+            iptables -t nat -L POSTROUTING -n -v | grep -E "wg0|Chain" || echo "No WG NAT rules found"
+            echo ""
+            echo "IP Forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"
+            echo "src_valid_mark: $(sysctl net.ipv4.conf.all.src_valid_mark)"
+            echo ""
+            
+            # Maintain configuration
+            maintain_config
+            
+            sleep 60
+          done
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "wg show wg0"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "wg show wg0 | grep -q 'latest handshake' || wg show wg0 | grep -q 'peer'"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      - env:
+          # Cron task for periodic rsync - this is how eeacms/rsync actually works
+          - name: CRON_TASK_1
+            value: "*/3 * * * * flock -n /var/lock/rsync.lock -c \"ssh root@46.62.145.1 'find /pcaps -mmin -30 -type f -printf \\\"%P\\\\n\\\"' | rsync -e 'ssh -o StrictHostKeyChecking=no' -avz --stats --delete --files-from=- root@46.62.145.1:/pcaps/ /traffic/\""
+        image: eeacms/rsync:latest
+        name: rsync
+        # Run in client mode to execute cron tasks
+        args: ["client"]
+        volumeMounts:
+          - mountPath: /traffic
+            name: traffic
+            readOnly: false
+          - mountPath: /root/.ssh
+            name: rsync-keys
+        # Add resource limits to prevent excessive resource usage
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "10m"
+            memory: "50Mi"
       restartPolicy: Always
       volumes:
         - name: traffic
@@ -58,3 +237,9 @@ spec:
           configMap:
             name: rsync-scripts
             defaultMode: 0555
+        - name: wireguard-config
+          secret:
+            secretName: wireguard-config
+            defaultMode: 0400
+        - name: wireguard-data
+          emptyDir: {}
