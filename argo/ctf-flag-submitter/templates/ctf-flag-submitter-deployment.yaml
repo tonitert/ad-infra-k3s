@@ -186,7 +186,6 @@ spec:
         volumeMounts:
         - name: scripts
           mountPath: /app/scripts
-          subPath: scripts
         resources:
           requests:
             memory: "100Mi"
