@@ -199,8 +199,7 @@ spec:
         - --link=scripts
         - --period=30s
         - --ssh-key-file=/etc/git-secret/id_rsa
-        - --ssh-known-hosts=true
-        - --ssh-known-hosts-file=/etc/git-secret/known_hosts
+        - --ssh-known-hosts=false
         - --max-failures=5
         - --verbose=1
         volumeMounts:
