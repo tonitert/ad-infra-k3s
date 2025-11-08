@@ -222,6 +222,8 @@ spec:
         secret:
           secretName: wireguard-config
           defaultMode: 0400
+      - name: wireguard-data
+        emptyDir: {}
       - name: git-deploy-key
         secret:
           secretName: git-deploy-key
