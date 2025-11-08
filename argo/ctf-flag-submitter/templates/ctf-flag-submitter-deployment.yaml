@@ -13,6 +13,8 @@ spec:
       labels:
         app: app-with-wireguard
     spec:
+      securityContext:
+        fsGroup: 65533
       # WireGuard sidecar container (must be first to maintain network)
       initContainers:
       - name: wireguard-init
@@ -227,6 +229,7 @@ spec:
         secret:
           secretName: git-deploy-key
           defaultMode: 0400
+          
       - name: scripts
         emptyDir: {}
       - name: lib-modules
