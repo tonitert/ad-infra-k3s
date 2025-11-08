@@ -181,7 +181,7 @@ spec:
         command:
           - "/bin/sh"
           - -c
-          - ln -sf /scripts/scripts /app/scripts && python /app/main.py saarctf --script-timeout 15
+          - ln -sf /scripts/scripts /app/scripts && python /app/main.py saarctf --script-timeout 15 --concurrent-teams-per-script 45
         env:
         - name: APP_ENV
           value: "production"
