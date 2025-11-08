@@ -9,7 +9,7 @@ spec:
     repoURL: '{{ .Values.repoUrl }}'
     targetRevision: {{ .Values.branch }}
   destination:
-    namespace: ctf-flag-submitter
+    namespace: flag-submitter
     server: "https://kubernetes.default.svc"
   syncPolicy:
     syncOptions:
