@@ -178,14 +178,15 @@ spec:
       # Main application container
       - name: app
         image: ghcr.io/tonitert/ctf-flag-submitter:latest
+        entrypoint: ["/bin/sh", "-c"]
         args:
-          - saarctf
+          - ln -sf /scripts/scripts /app/scripts && python /app/main.py saarctf
         env:
         - name: APP_ENV
           value: "production"
         volumeMounts:
         - name: scripts
-          mountPath: /app/scripts
+          mountPath: /scripts
         resources:
           requests:
             memory: "100Mi"
