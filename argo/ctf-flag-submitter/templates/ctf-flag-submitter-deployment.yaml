@@ -33,7 +33,7 @@ spec:
           # The linuxserver image uses s6 overlay and expects configs in /config
           # Copy our config to the expected location
           mkdir -p /config/wg_confs
-          cp /etc/wireguard/wg0.conf /config/wg_confs/wg0.conf
+          cp /tmp/wireguard/wg0.conf /config/wg_confs/wg0.conf
           
           # Bring up WireGuard interface using wg-quick
           echo "=== Bringing up WireGuard interface ==="
@@ -73,7 +73,7 @@ spec:
           privileged: true
         volumeMounts:
         - name: wireguard-config
-          mountPath: /etc/wireguard/wg0.conf
+          mountPath: /tmp/wireguard/wg0.conf
           subPath: wg0.conf
         - name: wireguard-data
           mountPath: /config
