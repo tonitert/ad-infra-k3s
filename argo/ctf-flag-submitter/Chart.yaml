@@ -1,0 +1,7 @@
+name: ctf-flag-submitter
+description: ctf-flag-submitter Helm Chart
+version: 0.0.1
+apiVersion: v2
+keywords:
+  - ctf-flag-submitter
+sources: []

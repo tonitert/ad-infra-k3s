@@ -1,0 +1,234 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-with-wireguard
+  namespace: flag-submitter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-with-wireguard
+  template:
+    metadata:
+      labels:
+        app: app-with-wireguard
+    spec:
+      # WireGuard sidecar container (must be first to maintain network)
+      initContainers:
+      - name: wireguard-init
+        image: lscr.io/linuxserver/wireguard:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "=== WireGuard Init Container ==="
+          echo "Kernel version: $(uname -r)"
+          
+          # Check if wireguard module is available
+          if ! modprobe wireguard 2>/dev/null; then
+            echo "WARNING: Could not load wireguard module, but will try to continue"
+          fi
+          
+          # The linuxserver image uses s6 overlay and expects configs in /config
+          # Copy our config to the expected location
+          mkdir -p /config/wg_confs
+          cp /etc/wireguard/wg0.conf /config/wg_confs/wg0.conf
+          
+          # Bring up WireGuard interface using wg-quick
+          echo "=== Bringing up WireGuard interface ==="
+          wg-quick up /config/wg_confs/wg0.conf
+          
+          # Get the WireGuard interface IP
+          WG_IP=$(ip -4 addr show wg0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+          echo "WireGuard IP: $WG_IP"
+          
+          # Enable IP forwarding
+          echo 1 > /proc/sys/net/ipv4/ip_forward
+          sysctl -w net.ipv4.conf.all.src_valid_mark=1
+          echo "IP forwarding and src_valid_mark enabled"
+          
+          # Set up NAT (MASQUERADE is more flexible than SNAT)
+          echo "=== Setting up NAT rules ==="
+          iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+          
+          # Verify NAT rules
+          echo "=== NAT Rules ==="
+          iptables -t nat -L POSTROUTING -n -v
+          
+          # Verify WireGuard is up
+          echo "=== WireGuard Status ==="
+          wg show
+          
+          # Check routing table
+          echo "=== Routing Table ==="
+          ip route show
+          
+          echo "=== Initialization complete ==="
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_MODULE
+          privileged: true
+        volumeMounts:
+        - name: wireguard-config
+          mountPath: /etc/wireguard/wg0.conf
+          subPath: wg0.conf
+        - name: wireguard-data
+          mountPath: /config
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+      
+      containers:
+      # WireGuard sidecar container (must be first to maintain network)
+      - name: wireguard
+        image: lscr.io/linuxserver/wireguard:latest
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_MODULE
+          privileged: true
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Europe/London"
+        volumeMounts:
+        - name: wireguard-config
+          mountPath: /config/wg_confs/wg0.conf
+          subPath: wg0.conf
+        - name: wireguard-data
+          mountPath: /config
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        command:
+        - sh
+        - -c
+        - |
+          echo "=== WireGuard sidecar starting ==="
+          
+          # Ensure sysctl is set
+          sysctl -w net.ipv4.conf.all.src_valid_mark=1 || true
+          
+          # Function to maintain NAT and forwarding
+          maintain_config() {
+            # Ensure IP forwarding is enabled
+            if [ "$(cat /proc/sys/net/ipv4/ip_forward)" != "1" ]; then
+              echo "Re-enabling IP forwarding"
+              echo 1 > /proc/sys/net/ipv4/ip_forward
+            fi
+            
+            # Check if NAT rule exists
+            if ! iptables -t nat -C POSTROUTING -o wg0 -j MASQUERADE 2>/dev/null; then
+              echo "Re-adding NAT rule"
+              iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+            fi
+          }
+          
+          # Main monitoring loop
+          while true; do
+            echo "=== $(date) ==="
+            echo "WireGuard Status:"
+            wg show wg0 2>/dev/null || echo "wg0 interface not found"
+            echo ""
+            echo "NAT Rules:"
+            iptables -t nat -L POSTROUTING -n -v | grep -E "wg0|Chain" || echo "No WG NAT rules found"
+            echo ""
+            echo "IP Forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"
+            echo "src_valid_mark: $(sysctl net.ipv4.conf.all.src_valid_mark)"
+            echo ""
+            
+            # Maintain configuration
+            maintain_config
+            
+            sleep 60
+          done
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "wg show wg0"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "wg show wg0 | grep -q 'latest handshake' || wg show wg0 | grep -q 'peer'"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      
+      # Main application container
+      - name: app
+        image: ghcr.io/tonitert/ctf-flag-submitter:latest
+        args:
+          - saarctf
+        env:
+        - name: APP_ENV
+          value: "production"
+        volumeMounts:
+        - name: scripts
+          mountPath: /app/scripts
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "200m"
+      
+      # Git-sync sidecar container
+      - name: git-sync
+        image: registry.k8s.io/git-sync/git-sync:v4.3.0
+        args:
+        - --repo=git@github.com:Intruders-FAUST/saarCTF-2025-exploits.git
+        - --ref=main
+        - --root=/git
+        - --link=scripts
+        - --period=30s
+        - --ssh-key-file=/etc/git-secret/id_rsa
+        - --ssh-known-hosts=true
+        - --ssh-known-hosts-file=/etc/git-secret/known_hosts
+        - --max-failures=5
+        - --verbose=1
+        volumeMounts:
+        - name: scripts
+          mountPath: /git
+        - name: git-deploy-key
+          mountPath: /etc/git-secret
+          readOnly: true
+        securityContext:
+          runAsUser: 65533  # git-sync user
+          runAsGroup: 65533
+          fsGroup: 65533
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "20m"
+      volumes:
+      - name: wireguard-config
+        secret:
+          secretName: wireguard-config
+          defaultMode: 0400
+      - name: git-deploy-key
+        secret:
+          secretName: git-deploy-key
+          defaultMode: 0400
+      - name: scripts
+        emptyDir: {}
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+          type: Directory
