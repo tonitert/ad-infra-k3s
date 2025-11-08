@@ -243,3 +243,7 @@ spec:
             defaultMode: 0400
         - name: wireguard-data
           emptyDir: {}
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+            type: Directory
