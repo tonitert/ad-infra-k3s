@@ -4,7 +4,7 @@ metadata:
   name: app-with-wireguard
   namespace: flag-submitter
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: app-with-wireguard
