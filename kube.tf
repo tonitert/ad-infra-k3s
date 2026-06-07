@@ -32,7 +32,7 @@ module "kube-hetzner" {
   # source = "./kube-hetzner"
   #    When using the terraform registry as source, you can optionally specify a version number.
   #    See https://registry.terraform.io/modules/kube-hetzner/kube-hetzner/hcloud for the available versions
-  version = "2.18.4"
+  version = "2.20.0"
   # 2. For local dev, path to the git repo
   # source = "../../kube-hetzner/"
   # 3. If you want to use the latest master branch (see https://developer.hashicorp.com/terraform/language/modules/sources#github), use
@@ -133,7 +133,7 @@ module "kube-hetzner" {
   control_plane_nodepools = [
     {
       name        = "control-plane-hel1",
-      server_type = "cx32",
+      server_type = "cx33",
       location    = "hel1",
       labels      = [],
       taints      = [],
@@ -156,7 +156,7 @@ module "kube-hetzner" {
   agent_nodepools = [
     {
       name        = "agent-small",
-      server_type = "cx22",
+      server_type = "cx23",
       location    = "hel1",
       labels      = [],
       taints      = [],

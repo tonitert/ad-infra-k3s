@@ -16,3 +16,5 @@ clustername_kubeconfig.yaml
 *kubeconfig.yaml
 k3s_kustomization_backup.yaml
 gitlab-state.config
+.env
+plan.out

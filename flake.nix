@@ -50,6 +50,8 @@
             tfsec
             tflint
             yq-go
+            ripgrep
+            zsh
           ];
         in
         {
@@ -61,7 +63,14 @@
                 export KUBECONFIG="$PWD/clustername_kubeconfig.yaml"
               fi
 
+              source .env
+
               echo "ad-infra-k3s devshell: terraform, packer, hcloud, kubectl, helm, kubeseal"
+
+              if [ -z "''${AD_INFRA_K3S_ZSH:-}" ] && [ -t 0 ] && [ -t 1 ]; then
+                export AD_INFRA_K3S_ZSH=1
+                exec zsh
+              fi
             '';
           };
         });
