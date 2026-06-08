@@ -98,21 +98,22 @@ terraform output --raw kubeconfig > clustername_kubeconfig.yaml
 export KUBECONFIG="$PWD/clustername_kubeconfig.yaml"
 ```
 
-Get the initial ArgoCD admin password:
+Expose ArgoCD locally and print the initial admin password:
 
 ```bash
-./get-argocd-password.sh
+./connect-argocd-locally.sh
 ```
 
 Or manually:
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+kubectl -n argocd port-forward --address 127.0.0.1 svc/argocd-server 8080:443
 ```
 
 ## ArgoCD
 
-ArgoCD is used for deploying the various services from the Git repo. The UI can be accessed via port-forwarding.
+ArgoCD is used for deploying the various services from the Git repo. The UI can be accessed at `https://localhost:8080` while `./connect-argocd-locally.sh` is running.
 
 ## Services
 
