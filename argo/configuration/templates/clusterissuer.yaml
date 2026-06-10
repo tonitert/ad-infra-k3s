@@ -13,9 +13,5 @@ spec:
       name: letsencrypt-secret
     solvers:
     - http01:
-        gatewayHTTPRoute:
-          parentRefs:
-            - name: traefik
-              namespace: ctfnote
-            - name: traefik
-              namespace: tulip
+        ingress:
+          ingressClassName: traefik

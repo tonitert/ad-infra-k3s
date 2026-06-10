@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tulip
+  namespace: tulip
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: tulip-tulip-basic-auth@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - tulip.ad.tertsonen.xyz
+      secretName: tulip-tls
+  rules:
+    - host: tulip.ad.tertsonen.xyz
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000

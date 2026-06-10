@@ -4,9 +4,14 @@ set -e
 
 echo "Loading kubeconfig..."
 
-terraform output --raw kubeconfig > clustername_kubeconfig.yaml
-
-export KUBECONFIG=$(pwd)/clustername_kubeconfig.yaml
+if [ -n "${KUBECONFIG:-}" ]; then
+    export KUBECONFIG
+elif [ -s clustername_kubeconfig.yaml ]; then
+    export KUBECONFIG=$(pwd)/clustername_kubeconfig.yaml
+else
+    terraform output --raw kubeconfig > clustername_kubeconfig.yaml
+    export KUBECONFIG=$(pwd)/clustername_kubeconfig.yaml
+fi
 
 # Generate sealed secrets from helm templates
 echo "Generating sealed secrets..."
@@ -23,7 +28,7 @@ for template_file in secrets/chart/templates/*.yaml; do
         echo "Processing template: $template_file"
         
         # Generate sealed secret for this template
-        helm template secrets secrets/chart -s "templates/$(basename "$template_file")" | kubeseal -o yaml > "argo/secrets/${filename}-sealed.yaml"
+        helm template secrets secrets/chart -s "templates/$(basename "$template_file")" | kubeseal --kubeconfig "$KUBECONFIG" -o yaml > "argo/secrets/${filename}-sealed.yaml"
 
         echo "- Generated: argo/secrets/${filename}-sealed.yaml"
     fi

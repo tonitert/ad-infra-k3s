@@ -1051,10 +1051,9 @@ persistence:
 
   # Traefik, all Traefik helm values can be found at https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
-  traefik_values = <<EOT
+traefik_values = <<EOT
 deployment:
   replicas: 1
-globalArguments: []
 
 ports:
   web:
