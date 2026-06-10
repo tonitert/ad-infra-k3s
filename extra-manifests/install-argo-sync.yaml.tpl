@@ -10,10 +10,11 @@ spec:
   source:
     path: argo/argo
     repoURL: '${repo_url}'
-    targetRevision: HEAD
+    targetRevision: '${repo_revision}'
     helm:
       values: |
         repoUrl: '${repo_url}'
+        repoRevision: '${repo_revision}'
   destination:
     namespace: argocd
     server: "https://kubernetes.default.svc"

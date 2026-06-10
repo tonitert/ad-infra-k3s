@@ -910,7 +910,8 @@ module "kube-hetzner" {
 
   # Extra values that will be passed to the `extra-manifests/kustomization.yaml.tpl` if its present.
   extra_kustomize_parameters = {
-    repo_url = var.repo_url
+    repo_url      = var.repo_url
+    repo_revision = var.repo_revision
   }
 
   # See working examples for extra manifests or a HelmChart in examples/kustomization_user_deploy/README.md
@@ -1222,4 +1223,10 @@ variable "repo_url" {
   description = "Repo url"
   type        = string
   default     = "https://github.com/tonitert/ad-infra-k3s"
+}
+
+variable "repo_revision" {
+  description = "Git revision ArgoCD should sync from"
+  type        = string
+  default     = "master"
 }
