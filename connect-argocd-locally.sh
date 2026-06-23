@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+tofu output -raw kubeconfig > clustername_kubeconfig.yaml
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 export KUBECONFIG="${KUBECONFIG:-$SCRIPT_DIR/clustername_kubeconfig.yaml}"
 
