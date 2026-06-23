@@ -2,6 +2,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: tulip
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
@@ -12,7 +14,5 @@ spec:
     namespace: tulip
     server: "https://kubernetes.default.svc"
   syncPolicy:
-    syncOptions:
-    - CreateNamespace=true
     automated:
       prune: true
