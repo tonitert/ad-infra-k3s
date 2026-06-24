@@ -8,6 +8,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: hcloud-volumes
   resources:
     limits:
       storage: 40G
