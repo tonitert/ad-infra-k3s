@@ -35,3 +35,7 @@ for template_file in secrets/chart/templates/*.yaml; do
 done
 
 echo "All sealed secrets generated in the argo/secrets/ directory"
+
+echo "Installing sealed secrets..."
+kubectl apply -f argo/secrets/
+echo "All sealed secrets installed"
