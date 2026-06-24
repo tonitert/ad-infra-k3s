@@ -2,10 +2,10 @@
 
 set -euo pipefail
 
-tofu output -raw kubeconfig > clustername_kubeconfig.yaml
+tofu output -raw kubeconfig > k3s_kubeconfig.yaml
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-export KUBECONFIG="${KUBECONFIG:-$SCRIPT_DIR/clustername_kubeconfig.yaml}"
+export KUBECONFIG="${KUBECONFIG:-$SCRIPT_DIR/k3s_kubeconfig.yaml}"
 
 LOCAL_PORT="${ARGOCD_LOCAL_PORT:-${1:-8080}}"
 NAMESPACE="${ARGOCD_NAMESPACE:-argocd}"

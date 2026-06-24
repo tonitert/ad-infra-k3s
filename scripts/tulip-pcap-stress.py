@@ -351,8 +351,8 @@ fi
 
 def parse_args() -> argparse.Namespace:
     kubeconfig = os.environ.get("KUBECONFIG")
-    if not kubeconfig and (REPO_ROOT / "clustername_kubeconfig.yaml").exists():
-        kubeconfig = str(REPO_ROOT / "clustername_kubeconfig.yaml")
+    if not kubeconfig and (REPO_ROOT / "k3s_kubeconfig.yaml").exists():
+        kubeconfig = str(REPO_ROOT / "k3s_kubeconfig.yaml")
 
     parser = argparse.ArgumentParser(
         description="Generate synthetic HTTP PCAPs and expose them to Tulip through a temporary kubectl SSH reverse tunnel."

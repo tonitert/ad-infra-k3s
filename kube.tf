@@ -902,6 +902,13 @@ module "kube-hetzner" {
   # extra_kustomize_deployment_commands=""
 
   extra_kustomize_deployment_commands = <<-EOT
+    timeout 300 bash <<'EOF'
+      until kubectl get storageclass longhorn >/dev/null 2>&1; do
+        echo "Waiting for Longhorn storageclass..."
+        sleep 5
+      done
+    EOF
+    kubectl patch storageclass longhorn --type=merge -p '{"allowVolumeExpansion":true}'
     kubectl -n argocd wait --for condition=established --timeout=120s crd/appprojects.argoproj.io
     kubectl -n argocd wait --for condition=established --timeout=120s crd/applications.argoproj.io
     kubectl apply -f /var/user_kustomize/helm-chart.yaml
@@ -920,7 +927,7 @@ module "kube-hetzner" {
   # See https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/issues/349
   # When "false". The kubeconfig file can instead be created by executing: "terraform output --raw kubeconfig > cluster_kubeconfig.yaml"
   # Always be careful to not commit this file!
-  create_kubeconfig = false
+  create_kubeconfig = true
 
   # Don't create the kustomize backup. This can be helpful for automation.
   # create_kustomization = false

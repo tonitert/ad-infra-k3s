@@ -45,6 +45,8 @@
             jq
             openssh
             pre-commit
+            python3
+            rsync
             terraform-docs
             terraform-ls
             tfsec
@@ -58,8 +60,8 @@
             packages = infraTools ++ supportTools;
 
             shellHook = ''
-              if [ -f "$PWD/clustername_kubeconfig.yaml" ] && [ -z "''${KUBECONFIG:-}" ]; then
-                export KUBECONFIG="$PWD/clustername_kubeconfig.yaml"
+              if [ -f "$PWD/k3s_kubeconfig.yaml" ] && [ -z "''${KUBECONFIG:-}" ]; then
+                export KUBECONFIG="$PWD/k3s_kubeconfig.yaml"
               fi
 
               source .env
