@@ -13,6 +13,6 @@ spec:
     # PVC capacity is provisioned from requests.storage. Keep the historical
     # limit for existing bound PVCs, where removing it is immutable.
     limits:
-      storage: 40G
+      storage: 100Gi
     requests:
       storage: 100Gi
