@@ -39,8 +39,8 @@ spec:
           # Add resource limits to prevent excessive resource usage
           resources:
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "700m"
+              memory: "1024Mi"
             requests:
               cpu: "10m"
               memory: "50Mi"
