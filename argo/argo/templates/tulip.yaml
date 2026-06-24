@@ -8,8 +8,8 @@ spec:
   project: default
   source:
     path: argo/tulip
-    repoURL: '{{ .Values.repoUrl }}'
-    targetRevision: {{ .Values.branch }}
+    repoURL: {{ .Values.repoUrl | quote }}
+    targetRevision: {{ .Values.repoRevision | quote }}
   destination:
     namespace: tulip
     server: "https://kubernetes.default.svc"
