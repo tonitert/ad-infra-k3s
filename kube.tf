@@ -133,7 +133,7 @@ module "kube-hetzner" {
   control_plane_nodepools = [
     {
       name        = "control-plane-hel1",
-      server_type = "cx33",
+      server_type = "cx43",
       location    = "hel1",
       labels      = [],
       taints      = [],

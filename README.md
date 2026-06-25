@@ -65,13 +65,24 @@ The Terraform workflow expects these repository secrets:
 
 ### Application secrets
 
-CTFNote and HedgeDoc secrets are rendered from `secrets/chart` and sealed into `argo/secrets` by `install-secrets.sh`.
+Application secrets are rendered from `secrets/chart` and sealed into `argo/secrets` by `install-secrets.sh`.
 
 Before running `install-secrets.sh`, create the ignored file `secrets/chart/values.yaml`:
 
 ```yaml
 basicAuthUsername: "<username>"
 basicAuthPassword: "<password>"
+dbUserPassword: "<ctfnote-database-password>"
+
+ataka:
+  ctf: testctf
+  postgresPassword: "<ataka-postgres-password>"
+  rabbitmqPassword: "<ataka-rabbitmq-password>"
+  openvpnConfig: |
+    client
+    dev tun
+    proto udp
+    remote <vpn-host> <vpn-port>
 ```
 
 Then generate sealed secrets:
@@ -86,6 +97,9 @@ The generated sealed secrets include:
 | --- | --- | --- |
 | `ctfnote-secrets` | `ctfnote` | Generated PostgreSQL admin password for CTFNote and HedgeDoc. |
 | `ctfnote-pad-basic-auth` | `ctfnote` | Basic-auth htpasswd entry for HedgeDoc and Tulip routes. |
+| `tulip-basic-auth` | `tulip` | Basic-auth htpasswd entry for Tulip routes. |
+| `ataka-env-secret` | `ataka` | Ataka CTF, PostgreSQL, RabbitMQ, and runtime environment values. |
+| `openvpn-config` | `ataka` | OpenVPN `vpn.conf` used by the Ataka CTF code sidecar. |
 
 Keep the original `basicAuthPassword` somewhere safe. The cluster stores only the htpasswd hash in `ctfnote-pad-basic-auth`, not the plaintext password.
 
