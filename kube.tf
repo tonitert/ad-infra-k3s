@@ -51,7 +51,7 @@ module "kube-hetzner" {
   # For more details on SSH see https://github.com/kube-hetzner/kube-hetzner/blob/master/docs/ssh.md
   ssh_private_key = var.ssh_key_path != "" ? file(var.ssh_key_path) : tls_private_key.ssh_key.private_key_openssh
   # You can add additional SSH public Keys to grant other team members root access to your cluster nodes.
-  ssh_additional_public_keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPxx9gWelsnyCU+WJ95XovyNPgr3TYrByhOr54kl5ukV tonit@tonipc" ]
+  ssh_additional_public_keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG7amwnfT3AwqBmZ5gqC3LuxXEpNG8TR29XE3xl72RYz tonit@toni-thinkpad" ]
 
   # You can also add additional SSH public Keys which are saved in the hetzner cloud by a label.
   # See https://docs.hetzner.cloud/#label-selector
@@ -902,13 +902,6 @@ module "kube-hetzner" {
   # extra_kustomize_deployment_commands=""
 
   extra_kustomize_deployment_commands = <<-EOT
-    timeout 300 bash <<'EOF'
-      until kubectl get storageclass longhorn >/dev/null 2>&1; do
-        echo "Waiting for Longhorn storageclass..."
-        sleep 5
-      done
-    EOF
-    kubectl patch storageclass longhorn --type=merge -p '{"allowVolumeExpansion":true}'
     kubectl -n argocd wait --for condition=established --timeout=120s crd/appprojects.argoproj.io
     kubectl -n argocd wait --for condition=established --timeout=120s crd/applications.argoproj.io
     kubectl apply -f /var/user_kustomize/helm-chart.yaml
@@ -927,7 +920,7 @@ module "kube-hetzner" {
   # See https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/issues/349
   # When "false". The kubeconfig file can instead be created by executing: "terraform output --raw kubeconfig > cluster_kubeconfig.yaml"
   # Always be careful to not commit this file!
-  create_kubeconfig = true
+  create_kubeconfig = false
 
   # Don't create the kustomize backup. This can be helpful for automation.
   # create_kustomization = false
@@ -1058,9 +1051,10 @@ persistence:
 
   # Traefik, all Traefik helm values can be found at https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
-traefik_values = <<EOT
+  traefik_values = <<EOT
 deployment:
   replicas: 1
+globalArguments: []
 
 ports:
   web:
