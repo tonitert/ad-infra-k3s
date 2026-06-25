@@ -524,6 +524,8 @@ module "kube-hetzner" {
   # The default is true.
   # traefik_resource_limits = false
 
+  traefik_provider_kubernetes_gateway_enabled = true
+
   # If you want to configure additional ports for traefik, enter them here as a list of objects with name, port, and exposedPort properties.
   # Example:
   # traefik_additional_ports = [{name = "example", port = 1234, exposedPort = 1234}]
@@ -1049,36 +1051,6 @@ persistence:
   # See https://github.com/traefik/traefik-helm-chart/releases for the available versions.
   # traefik_version = ""
 
-  # Traefik, all Traefik helm values can be found at https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
-  # The following is an example, please note that the current indentation inside the EOT is important.
-  traefik_values = <<EOT
-deployment:
-  replicas: 1
-globalArguments: []
-
-ports:
-  web:
-    proxyProtocol:
-      trustedIPs:
-        - 127.0.0.1/32
-        - 10.0.0.0/8
-    forwardedHeaders:
-      trustedIPs:
-        - 127.0.0.1/32
-        - 10.0.0.0/8
-  websecure:
-    proxyProtocol:
-      trustedIPs:
-        - 127.0.0.1/32
-        - 10.0.0.0/8
-    forwardedHeaders:
-      trustedIPs:
-        - 127.0.0.1/32
-        - 10.0.0.0/8
-providers:
-  kubernetesGateway:
-    enabled: true
-  EOT
   /*   traefik_values = <<EOT
 deployment:
   replicas: 1
