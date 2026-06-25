@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 import player_cli
+import player_cli.auth
 import requests
 import typer
 from requests import JSONDecodeError
@@ -58,7 +59,7 @@ def request(method, endpoint, data=None, params=None):
             print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(result))
         return result
 
-    url = f'http://{player_cli.state["host"]}/api/{endpoint}'
+    url = f'{base_url(player_cli.state["host"])}/api/{endpoint}'
 
     if player_cli.state['debug']:
         print(f"{DEBUG_STR}: " + escape(f"{method} {url}{'' if params is None else f' with params {params}'}"))
@@ -72,7 +73,7 @@ def request(method, endpoint, data=None, params=None):
         'POST': requests.post,
         'PATCH': requests.patch,
     }[method]
-    response = func(url, json=data, params=params)
+    response = func(url, json=data, params=params, auth=player_cli.auth.get_basic_auth())
     if player_cli.state['debug']:
         print(f"{DEBUG_STR}: " + escape(f"{response.status_code} {response.reason}"))
         print(f"{DEBUG_STR}: " + escape(response.json()))
@@ -85,6 +86,13 @@ def request(method, endpoint, data=None, params=None):
             print(f"{ERROR_STR}: " + escape(response.text))
         raise typer.Exit(code=1)
     return response.json()
+
+
+def base_url(host):
+    host = host.rstrip('/')
+    if host.startswith('http://') or host.startswith('https://'):
+        return host
+    return f'https://{host}'
 
 
 def dt_from_iso(s):

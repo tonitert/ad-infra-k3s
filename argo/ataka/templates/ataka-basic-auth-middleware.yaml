@@ -1,0 +1,14 @@
+{{- $ingress := .Values.ingress | default dict -}}
+{{- $basicAuth := get $ingress "basicAuth" | default dict -}}
+{{- if and (get $ingress "enabled" | default false) (get $basicAuth "enabled" | default true) }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ataka-basic-auth
+  namespace: ataka
+spec:
+  basicAuth:
+    secret: ataka-basic-auth
+    realm: "Ataka"
+    removeHeader: true
+{{- end }}

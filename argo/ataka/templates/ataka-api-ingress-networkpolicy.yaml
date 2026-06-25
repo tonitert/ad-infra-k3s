@@ -1,0 +1,25 @@
+{{- $ingress := .Values.ingress | default dict -}}
+{{- if (get $ingress "enabled" | default false) }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ataka-api-ingress
+  namespace: ataka
+spec:
+  podSelector:
+    matchLabels:
+      io.kompose.service: api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}

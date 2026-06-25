@@ -1,2 +1,8 @@
+ingress:
+  enabled: true
+  host: ataka.ad.tertsonen.xyz
+  basicAuth:
+    enabled: true
+
 openvpn:
   enabled: false

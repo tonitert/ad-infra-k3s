@@ -1,0 +1,15 @@
+{{- $ingress := .Values.ingress | default dict -}}
+{{- if (get $ingress "enabled" | default false) }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ataka-certificate
+  namespace: ataka
+spec:
+  secretName: ataka-tls
+  dnsNames:
+    - {{ required "Set ingress.host" (get $ingress "host") | quote }}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+{{- end }}

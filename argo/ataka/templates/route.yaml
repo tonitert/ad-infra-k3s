@@ -1,0 +1,35 @@
+{{- $ingress := .Values.ingress | default dict -}}
+{{- $basicAuth := get $ingress "basicAuth" | default dict -}}
+{{- if (get $ingress "enabled" | default false) }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ataka-http
+  namespace: ataka
+spec:
+  parentRefs:
+    - name: traefik
+      sectionName: http
+      kind: Gateway
+    - name: traefik
+      sectionName: https
+      kind: Gateway
+  hostnames:
+    - {{ required "Set ingress.host" (get $ingress "host") | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+{{- if (get $basicAuth "enabled" | default true) }}
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: ataka-basic-auth
+{{- end }}
+      backendRefs:
+        - name: api
+          port: 8000
+{{- end }}
