@@ -1,3 +1,4 @@
+{{- $openvpn := .Values.openvpn | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,6 +25,7 @@ spec:
         io.kompose.service: ctfcode
     spec:
       containers:
+{{- if (get $openvpn "enabled" | default false) }}
         # OpenVPN client sidecar container
         - name: openvpn-client
           image: dperson/openvpn-client
@@ -48,6 +50,7 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
+{{- end }}
         # Main application container
         - envFrom:
             - secretRef:
@@ -87,6 +90,7 @@ spec:
         - name: shared
           persistentVolumeClaim:
             claimName: shared
+{{- if (get $openvpn "enabled" | default false) }}
         # OpenVPN configuration volume
         - name: openvpn-config
           secret:
@@ -96,3 +100,4 @@ spec:
           hostPath:
             path: /dev/net/tun
             type: CharDevice
+{{- end }}

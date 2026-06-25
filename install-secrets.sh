@@ -20,17 +20,39 @@ echo "Generating sealed secrets..."
 mkdir -p argo/secrets
 
 # Process each template file dynamically
+rendered_secret=$(mktemp)
+render_error=$(mktemp)
+trap 'rm -f "$rendered_secret" "$render_error"' EXIT
+
 for template_file in secrets/chart/templates/*.yaml; do
     if [ -f "$template_file" ]; then
         # Extract filename without path and extension
         filename=$(basename "$template_file" .yaml)
+        output_file="argo/secrets/${filename}-sealed.yaml"
         
         echo "Processing template: $template_file"
+
+        if ! helm template secrets secrets/chart -s "templates/$(basename "$template_file")" > "$rendered_secret" 2> "$render_error"; then
+            if grep -q "could not find template templates/$(basename "$template_file") in chart" "$render_error"; then
+                rm -f "$output_file"
+                echo "- Skipped empty template and removed stale output: $output_file"
+                continue
+            fi
+
+            cat "$render_error" >&2
+            exit 1
+        fi
+
+        if ! grep -q '[^[:space:]]' "$rendered_secret"; then
+            rm -f "$output_file"
+            echo "- Skipped empty template and removed stale output: $output_file"
+            continue
+        fi
         
         # Generate sealed secret for this template
-        helm template secrets secrets/chart -s "templates/$(basename "$template_file")" | kubeseal --kubeconfig "$KUBECONFIG" -o yaml > "argo/secrets/${filename}-sealed.yaml"
+        kubeseal --kubeconfig "$KUBECONFIG" -o yaml < "$rendered_secret" > "$output_file"
 
-        echo "- Generated: argo/secrets/${filename}-sealed.yaml"
+        echo "- Generated: $output_file"
     fi
 done
 
