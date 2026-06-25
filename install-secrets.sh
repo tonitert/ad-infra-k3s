@@ -9,7 +9,7 @@ if [ -n "${KUBECONFIG:-}" ]; then
 elif [ -s k3s_kubeconfig.yaml ]; then
     export KUBECONFIG=$(pwd)/k3s_kubeconfig.yaml
 else
-    terraform output --raw kubeconfig > k3s_kubeconfig.yaml
+    tofu output --raw kubeconfig > k3s_kubeconfig.yaml
     export KUBECONFIG=$(pwd)/k3s_kubeconfig.yaml
 fi
 
