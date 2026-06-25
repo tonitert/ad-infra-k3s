@@ -44,10 +44,10 @@ spec:
               readOnly: true
           resources:
             requests:
-              memory: "128m"
+              memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "2048m"
+              memory: "2048Mi"
               cpu: "2000m"
       restartPolicy: Always
       volumes:

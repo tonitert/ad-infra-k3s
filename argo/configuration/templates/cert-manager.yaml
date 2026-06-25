@@ -6,7 +6,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  name: cert-manager
   chart: oci://quay.io/jetstack/charts/cert-manager
   targetNamespace: cert-manager
   version: "v1.18.2"

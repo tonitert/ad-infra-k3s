@@ -4,9 +4,9 @@ metadata:
   name: rsync-keys
   namespace: tulip
 spec:
-  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
+  storageClassName: longhorn
   resources:
     limits:
       storage: 20M

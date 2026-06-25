@@ -4,7 +4,7 @@ metadata:
   name: tulip-basic-auth
   namespace: tulip
 spec:
-  chain:
-    middlewares:
-      - name: ctfnote-pad-basic-auth
-        namespace: ctfnote
+  basicAuth:
+    secret: tulip-basic-auth
+    realm: "Protected Area"
+    removeHeader: true

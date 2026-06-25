@@ -7,6 +7,16 @@ locals {
   hcloud_token = "xxxxxxxxxxx"
 }
 
+# Generate SSH key pair using TLS provider
+resource "tls_private_key" "ssh_key" {
+  algorithm = "ED25519"
+}
+
+output "tls_private_key_openssh" {
+  value     = tls_private_key.ssh_key.private_key_openssh
+  sensitive = true
+}
+
 module "kube-hetzner" {
   providers = {
     hcloud = hcloud
@@ -22,7 +32,7 @@ module "kube-hetzner" {
   # source = "./kube-hetzner"
   #    When using the terraform registry as source, you can optionally specify a version number.
   #    See https://registry.terraform.io/modules/kube-hetzner/kube-hetzner/hcloud for the available versions
-  version = "2.18.2"
+  version = "2.20.0"
   # 2. For local dev, path to the git repo
   # source = "../../kube-hetzner/"
   # 3. If you want to use the latest master branch (see https://developer.hashicorp.com/terraform/language/modules/sources#github), use
@@ -36,12 +46,12 @@ module "kube-hetzner" {
   # ssh_port = 2222
 
   # * Your ssh public key
-  ssh_public_key = file(var.ssh_key_path != "" ? "${var.ssh_key_path}.pub" : "./keys/ssh.pub")
+  ssh_public_key = var.ssh_key_path != "" ? file("${var.ssh_key_path}.pub") : tls_private_key.ssh_key.public_key_openssh
   # * Your private key must be "ssh_private_key = null" when you want to use ssh-agent for a Yubikey-like device authentication or an SSH key-pair with a passphrase.
   # For more details on SSH see https://github.com/kube-hetzner/kube-hetzner/blob/master/docs/ssh.md
-  ssh_private_key = file(var.ssh_key_path != "" ? var.ssh_key_path : "./keys/ssh")
+  ssh_private_key = var.ssh_key_path != "" ? file(var.ssh_key_path) : tls_private_key.ssh_key.private_key_openssh
   # You can add additional SSH public Keys to grant other team members root access to your cluster nodes.
-  ssh_additional_public_keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPxx9gWelsnyCU+WJ95XovyNPgr3TYrByhOr54kl5ukV tonit@tonipc" ]
+  ssh_additional_public_keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG7amwnfT3AwqBmZ5gqC3LuxXEpNG8TR29XE3xl72RYz tonit@toni-thinkpad" ]
 
   # You can also add additional SSH public Keys which are saved in the hetzner cloud by a label.
   # See https://docs.hetzner.cloud/#label-selector
@@ -123,7 +133,7 @@ module "kube-hetzner" {
   control_plane_nodepools = [
     {
       name        = "control-plane-hel1",
-      server_type = "cx32",
+      server_type = "cx33",
       location    = "hel1",
       labels      = [],
       taints      = [],
@@ -146,7 +156,7 @@ module "kube-hetzner" {
   agent_nodepools = [
     {
       name        = "agent-small",
-      server_type = "cx22",
+      server_type = "cx23",
       location    = "hel1",
       labels      = [],
       taints      = [],
@@ -900,7 +910,8 @@ module "kube-hetzner" {
 
   # Extra values that will be passed to the `extra-manifests/kustomization.yaml.tpl` if its present.
   extra_kustomize_parameters = {
-    repo_url = var.repo_url
+    repo_url      = var.repo_url
+    repo_revision = var.repo_revision
   }
 
   # See working examples for extra manifests or a HelmChart in examples/kustomization_user_deploy/README.md
@@ -1031,6 +1042,7 @@ persistence:
   defaultFsType: ext4
   defaultClassReplicaCount: 1
   defaultClass: false
+  storageOverProvisioningPercentage: 300
   EOT
 
   # If you want to use a specific Traefik helm chart version, set it below; otherwise, leave them as-is for the latest versions.
@@ -1211,4 +1223,10 @@ variable "repo_url" {
   description = "Repo url"
   type        = string
   default     = "https://github.com/tonitert/ad-infra-k3s"
+}
+
+variable "repo_revision" {
+  description = "Git revision ArgoCD should sync from"
+  type        = string
+  default     = "master"
 }

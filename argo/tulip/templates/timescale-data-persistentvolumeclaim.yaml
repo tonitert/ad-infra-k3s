@@ -8,8 +8,11 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: hcloud-volumes
   resources:
+    # PVC capacity is provisioned from requests.storage. Keep the historical
+    # limit for existing bound PVCs, where removing it is immutable.
     limits:
-      storage: 100G
+      storage: 100Gi
     requests:
-      storage: 100M
+      storage: 100Gi

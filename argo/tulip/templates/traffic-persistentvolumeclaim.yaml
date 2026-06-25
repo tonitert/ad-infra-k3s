@@ -8,7 +8,5 @@ spec:
   accessModes:
     - ReadWriteMany
   resources:
-    limits:
-      storage: 40G
     requests:
-      storage: 100M
+      storage: 40Gi

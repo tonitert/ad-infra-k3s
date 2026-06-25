@@ -1,0 +1,68 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ctfnote
+  namespace: ctfnote
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - ctfnote.ad.tertsonen.xyz
+      secretName: ctfnote-tls
+  rules:
+    - host: ctfnote.ad.tertsonen.xyz
+      http:
+        paths:
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 3000
+          - path: /uploads
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 3000
+          - path: /calendar.ics
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 3000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ctfnote-pad
+  namespace: ctfnote
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: ctfnote-ctfnote-pad-basic-auth@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - ctfnote.ad.tertsonen.xyz
+      secretName: ctfnote-tls
+  rules:
+    - host: ctfnote.ad.tertsonen.xyz
+      http:
+        paths:
+          - path: /pad
+            pathType: Prefix
+            backend:
+              service:
+                name: hedgedoc
+                port:
+                  number: 3000

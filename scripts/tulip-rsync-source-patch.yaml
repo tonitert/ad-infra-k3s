@@ -1,0 +1,8 @@
+spec:
+  template:
+    spec:
+      containers:
+        - name: rsync
+          env:
+            - name: RSYNC_SOURCE
+              value: __RSYNC_SOURCE_JSON__

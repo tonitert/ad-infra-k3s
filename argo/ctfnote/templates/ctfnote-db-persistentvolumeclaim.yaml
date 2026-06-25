@@ -5,9 +5,9 @@ metadata:
     io.kompose.service: ctfnote-db
   name: ctfnote-db
 spec:
-  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
+  storageClassName: longhorn
   resources:
     requests:
       storage: 500Mi

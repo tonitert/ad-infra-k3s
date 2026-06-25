@@ -8,8 +8,8 @@ spec:
   project: default
   source:
     path: argo/configuration
-    repoURL: '{{ .Values.repoUrl }}'
-    targetRevision: "master"
+    repoURL: {{ .Values.repoUrl | quote }}
+    targetRevision: {{ .Values.repoRevision | quote }}
   destination:
     namespace: configuration
     server: "https://kubernetes.default.svc"

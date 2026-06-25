@@ -5,9 +5,9 @@ metadata:
     io.kompose.service: pad-uploads
   name: pad-uploads
 spec:
-  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
+  storageClassName: longhorn
   resources:
     requests:
       storage: 100Mi

@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rsync-scripts
+  namespace: tulip
+data:
+  sync-pcaps: |
+    #!/bin/sh
+    set -eu
+
+    log() {
+      printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*"
+    }
+
+    same_file() {
+      src_size="$(wc -c < "$1" | tr -d ' ')"
+      dst_size="$(wc -c < "$2" | tr -d ' ')"
+      [ "$src_size" = "$dst_size" ] || return 1
+      cmp -s "$1" "$2"
+    }
+
+    SOURCE="${RSYNC_SOURCE:-root@168.119.122.165:/pcaps/}"
+    TRAFFIC_DIR="${TRAFFIC_DIR:-/traffic}"
+    STAGING_DIR="${RSYNC_STAGING_DIR:-$TRAFFIC_DIR/.rsync-staging}"
+    LOCK_DIR="${RSYNC_LOCK_DIR:-$TRAFFIC_DIR/.rsync-lock}"
+
+    mkdir -p "$TRAFFIC_DIR" "$STAGING_DIR"
+
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+      log "previous rsync still running; skipping this run"
+      exit 0
+    fi
+
+    cleanup() {
+      rm -f "$TRAFFIC_DIR"/.*.publish.$$ 2>/dev/null || true
+      rmdir "$LOCK_DIR" 2>/dev/null || true
+    }
+    trap cleanup EXIT INT TERM
+
+    log "sync start: source=$SOURCE staging=$STAGING_DIR target=$TRAFFIC_DIR"
+
+    rsync -az \
+      --delete \
+      --delete-delay \
+      --delay-updates \
+      --partial-dir=.rsync-partial \
+      --stats \
+      "$SOURCE" "$STAGING_DIR/"
+
+    published=0
+    skipped=0
+    removed=0
+
+    for src in "$STAGING_DIR"/*; do
+      [ -f "$src" ] || continue
+
+      base="${src##*/}"
+      case "$base" in
+        .*) continue ;;
+      esac
+
+      dst="$TRAFFIC_DIR/$base"
+      tmp="$TRAFFIC_DIR/.$base.publish.$$"
+
+      if [ -f "$dst" ] && same_file "$src" "$dst"; then
+        skipped=$((skipped + 1))
+        continue
+      fi
+
+      rm -f "$tmp"
+      if ! ln "$src" "$tmp" 2>/dev/null; then
+        cp -p "$src" "$tmp"
+      fi
+      mv -f "$tmp" "$dst"
+      published=$((published + 1))
+    done
+
+    for dst in "$TRAFFIC_DIR"/*; do
+      [ -f "$dst" ] || continue
+
+      base="${dst##*/}"
+      case "$base" in
+        .*) continue ;;
+      esac
+
+      if [ ! -f "$STAGING_DIR/$base" ]; then
+        rm -f "$dst"
+        removed=$((removed + 1))
+      fi
+    done
+
+    staging_files="$(find "$STAGING_DIR" -maxdepth 1 -type f ! -name '.*' | wc -l | tr -d ' ')"
+    visible_files="$(find "$TRAFFIC_DIR" -maxdepth 1 -type f ! -name '.*' | wc -l | tr -d ' ')"
+    log "sync complete: published=$published skipped=$skipped removed=$removed staging_files=$staging_files visible_files=$visible_files"

@@ -4,6 +4,7 @@ metadata:
   labels:
     io.kompose.service: rsync
   name: rsync
+  namespace: tulip
 spec:
   replicas: 1
   selector:
@@ -20,7 +21,7 @@ spec:
         - env:
             # Cron task for periodic rsync - this is how eeacms/rsync actually works
             - name: CRON_TASK_1
-              value: "* * * * * rsync -avz --delete --stats root@168.119.122.165:/pcaps/ /traffic/"
+              value: "*/3 * * * * flock -n /var/lock/rsync.lock -c \"ssh root@46.62.145.1 'find /pcaps -mmin -30 -type f -printf \\\"%P\\\\n\\\"' | rsync -e 'ssh -o StrictHostKeyChecking=no' -avz --stats --delete --files-from=- root@46.62.145.1:/pcaps/ /traffic/\""
           image: eeacms/rsync:latest
           name: rsync
           # Run in client mode to execute cron tasks
@@ -31,11 +32,15 @@ spec:
               readOnly: false
             - mountPath: /root/.ssh
               name: rsync-keys
+            - mountPath: /usr/local/bin/sync-pcaps
+              name: rsync-scripts
+              subPath: sync-pcaps
+              readOnly: true
           # Add resource limits to prevent excessive resource usage
           resources:
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "700m"
+              memory: "1024Mi"
             requests:
               cpu: "10m"
               memory: "50Mi"
@@ -49,3 +54,7 @@ spec:
           persistentVolumeClaim:
             claimName: rsync-keys
             readOnly: false
+        - name: rsync-scripts
+          configMap:
+            name: rsync-scripts
+            defaultMode: 0555
