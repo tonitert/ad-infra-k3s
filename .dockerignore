@@ -2,7 +2,8 @@
 **
 
 # allow these files
-!/ataka/**
+!ataka/
+!ataka/**
 
 # ignore everything within these files
 venv

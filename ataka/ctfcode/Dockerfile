@@ -13,6 +13,8 @@ VOLUME /ataka/ctfconfig
 VOLUME /data/shared
 
 COPY ataka/player-cli /ataka/player-cli
+RUN chmod +x /ataka/player-cli/package_player_cli.sh \
+    && test -x /ataka/player-cli/package_player_cli.sh
 
 COPY ataka/ctfcode/requirements.txt /ataka/ctfcode/
 RUN pip install --no-cache-dir -r /ataka/ctfcode/requirements.txt

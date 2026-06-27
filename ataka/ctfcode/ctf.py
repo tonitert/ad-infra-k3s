@@ -3,7 +3,8 @@ from importlib import import_module, reload
 import logging
 import traceback
 import functools
-from subprocess import Popen
+from pathlib import Path
+from subprocess import run
 
 import exrex
 
@@ -53,7 +54,10 @@ class CTF:
 
     def package_player_cli(self):
         logging.info("Packaging player-cli")
-        Popen(['/ataka/player-cli/package_player_cli.sh'])
+        package_script = Path('/ataka/player-cli/package_player_cli.sh')
+        if not package_script.is_file():
+            raise FileNotFoundError(f"Missing player-cli package script: {package_script}")
+        run([str(package_script)], check=True)
 
     @catch(default=None)
     def reload(self):
