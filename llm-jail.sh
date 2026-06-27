@@ -30,6 +30,7 @@ nix run ../llm-jail/#codex -- --dangerous --vcpu 6 --mem 8192 --dev-env \
     --allow-domain ctfnote.ad.tertsonen.xyz:443 \
     --allow-domain ctfnote.ad.tertsonen.xyz:22 \
     --allow-domain ctfnote.ad.tertsonen.xyz:80 \
+    --allow-domain ataka.ad.tertsonen.xyz \
     --allow-domain 204.168.241.208 \
     -- -c shell_environment_policy.inherit=all \
     -c "shell_environment_policy.set.BASH_ENV=\"$bash_env\""

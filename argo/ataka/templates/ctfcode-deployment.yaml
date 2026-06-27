@@ -73,8 +73,6 @@ spec:
             - mountPath: /ataka/ctfconfig
               name: ctfcode-cm0
               readOnly: true
-            - mountPath: /ataka/player-cli
-              name: ctfcode-cm1
             - mountPath: /data/shared
               name: shared
       hostname: ataka-ctfcode
@@ -83,51 +81,6 @@ spec:
         - configMap:
             name: ctfcode-cm0
           name: ctfcode-cm0
-        - configMap:
-            name: ctfcode-cm1
-            defaultMode: 0555
-            items:
-              - key: .gitignore
-                path: .gitignore
-              - key: __main__.py
-                path: __main__.py
-              - key: package_player_cli.sh
-                path: package_player_cli.sh
-              - key: requirements.txt
-                path: requirements.txt
-              - key: player_cli____init__.py
-                path: player_cli/__init__.py
-              - key: player_cli__auth.py
-                path: player_cli/auth.py
-              - key: player_cli__ctfconfig_wrapper.py
-                path: player_cli/ctfconfig_wrapper.py
-              - key: player_cli__exploit____init__.py
-                path: player_cli/exploit/__init__.py
-              - key: player_cli__exploit__execution.py
-                path: player_cli/exploit/execution.py
-              - key: player_cli__exploit__exploit.py
-                path: player_cli/exploit/exploit.py
-              - key: player_cli__exploit__job.py
-                path: player_cli/exploit/job.py
-              - key: player_cli__exploit__target.py
-                path: player_cli/exploit/target.py
-              - key: player_cli__flags.py
-                path: player_cli/flags.py
-              - key: player_cli__service.py
-                path: player_cli/service.py
-              - key: player_cli__util.py
-                path: player_cli/util.py
-              - key: templates__python__Dockerfile
-                path: templates/python/Dockerfile
-              - key: templates__python__exploit.py
-                path: templates/python/exploit.py
-              - key: templates__python__requirements.txt
-                path: templates/python/requirements.txt
-              - key: templates__ubuntu__Dockerfile
-                path: templates/ubuntu/Dockerfile
-              - key: templates__ubuntu__exploit.sh
-                path: templates/ubuntu/exploit.sh
-          name: ctfcode-cm1
         - name: shared
           persistentVolumeClaim:
             claimName: shared

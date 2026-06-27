@@ -4,12 +4,21 @@ The project sets up a Kubernetes cluster on Hetzner with services needed for pla
 You are running in a sandbox with internet access to specified domains only. If more access is strictly required to perform the task, ask the user to whitelist the domain. The sandbox is defined in ./llm-jail.sh
 The configuration must be production ready and applyable from scratch from the files in this repository. There should be no manual steps required to deploy the cluster, running terraform apply must be enough.
 You have access to a development kubernetes cluster. The kubeconfig is in k3s_kubeconfig.yaml
+Do not use configmaps for source code. Ataka and tulip can be modified and their containers pushed to the github repo. Prompt the user to do this when you modify the service sources.
 
 # Services
 
 ## Tulip
 
 Tulip is a network traffic inspector. One pod ingests PCAPs from the vulnbox machine, which are pulled in with rsync from a remote host. Tulip exposes a web interface to inspect traffic for exploits against A/D services in a dedicated vulnbox machine.
+
+## Ataka
+
+Ataka is a exploit automation tool. It automatically executes exploits against other teams during the CTF.
+
+# Secrets
+
+install-secrets.sh installs the secrets for services from the chart at secrets/
 
 # Scripts
 

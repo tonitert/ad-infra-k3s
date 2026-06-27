@@ -53,6 +53,7 @@
             tflint
             yq-go
             ripgrep
+            docker
           ];
         in
         {

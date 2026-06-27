@@ -10,8 +10,9 @@ RUN pip install --no-cache-dir -r /ataka/common/requirements.txt
 COPY ataka/common /ataka/common
 
 VOLUME /ataka/ctfconfig
-VOLUME /ataka/player-cli
 VOLUME /data/shared
+
+COPY ataka/player-cli /ataka/player-cli
 
 COPY ataka/ctfcode/requirements.txt /ataka/ctfcode/
 RUN pip install --no-cache-dir -r /ataka/ctfcode/requirements.txt
