@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import json
 from datetime import datetime
 
 import player_cli
@@ -64,7 +65,7 @@ def request(method, endpoint, data=None, params=None):
     if player_cli.state['debug']:
         print(f"{DEBUG_STR}: " + escape(f"{method} {url}{'' if params is None else f' with params {params}'}"))
         if data is not None:
-            print(f"{DEBUG_STR}: " + escape(data))
+            print(f"{DEBUG_STR}: " + escape(json.dumps(data, default=str)))
         print(f"{DEBUG_STR}: ")
 
     func = {
@@ -76,16 +77,20 @@ def request(method, endpoint, data=None, params=None):
     response = func(url, json=data, params=params, auth=player_cli.auth.get_basic_auth())
     if player_cli.state['debug']:
         print(f"{DEBUG_STR}: " + escape(f"{response.status_code} {response.reason}"))
-        print(f"{DEBUG_STR}: " + escape(response.json()))
+        print(f"{DEBUG_STR}: " + escape(format_response_body(response)))
 
     if response.status_code != 200:
         print(f"{ERROR_STR}: " + escape(f"{method} {endpoint} returned status code {response.status_code} {response.reason}"))
         try:
-            print(f"{ERROR_STR}: " + escape(response.json()))
+            print(f"{ERROR_STR}: " + escape(format_response_body(response)))
         except JSONDecodeError:
             print(f"{ERROR_STR}: " + escape(response.text))
         raise typer.Exit(code=1)
     return response.json()
+
+
+def format_response_body(response):
+    return json.dumps(response.json(), default=str)
 
 
 def base_url(host):
