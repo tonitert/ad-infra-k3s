@@ -1047,14 +1047,13 @@ persistence:
 
   # If you want to use a specific Traefik helm chart version, set it below; otherwise, leave them as-is for the latest versions.
   # See https://github.com/traefik/traefik-helm-chart/releases for the available versions.
-  # traefik_version = ""
+  traefik_version = "41.0.0"
 
   # Traefik, all Traefik helm values can be found at https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
   traefik_values = <<EOT
 deployment:
   replicas: 1
-globalArguments: []
 
 ports:
   web:
@@ -1078,6 +1077,8 @@ ports:
 providers:
   kubernetesGateway:
     enabled: true
+gatewayClass:
+  enabled: false
   EOT
   /*   traefik_values = <<EOT
 deployment:
