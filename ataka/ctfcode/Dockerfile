@@ -9,7 +9,6 @@ COPY ataka/common/requirements.txt /ataka/common/
 RUN pip install --no-cache-dir -r /ataka/common/requirements.txt
 COPY ataka/common /ataka/common
 
-VOLUME /ataka/ctfconfig
 VOLUME /data/shared
 
 COPY ataka/player-cli /ataka/player-cli
@@ -19,5 +18,6 @@ RUN chmod +x /ataka/player-cli/package_player_cli.sh \
 COPY ataka/ctfcode/requirements.txt /ataka/ctfcode/
 RUN pip install --no-cache-dir -r /ataka/ctfcode/requirements.txt
 COPY ataka/ctfcode /ataka/ctfcode
+COPY ataka/ctfconfig /ataka/ctfconfig
 
 CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.ctfcode" ]

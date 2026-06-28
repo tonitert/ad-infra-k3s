@@ -71,17 +71,11 @@ spec:
               memory: "512Mi"
               cpu: "500m"
           volumeMounts:
-            - mountPath: /ataka/ctfconfig
-              name: ctfcode-cm0
-              readOnly: true
             - mountPath: /data/shared
               name: shared
       hostname: ataka-ctfcode
       restartPolicy: Always
       volumes:
-        - configMap:
-            name: ctfcode-cm0
-          name: ctfcode-cm0
         - name: shared
           persistentVolumeClaim:
             claimName: shared

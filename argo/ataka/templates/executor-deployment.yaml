@@ -1,3 +1,4 @@
+{{- $wireguard := .Values.wireguard | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -50,6 +51,13 @@ spec:
               name: exploits
             - mountPath: /data/persist
               name: persists
+{{- if (get $wireguard "enabled" | default false) }}
+            - mountPath: /etc/ataka-wireguard
+              name: ataka-wireguard-config
+              readOnly: true
+            - mountPath: /dev/net/tun
+              name: dev-net-tun
+{{- end }}
           resources:
             requests:
               cpu: 500m
@@ -69,8 +77,19 @@ spec:
             - |
               mkdir -p /data/shared/exploits /data/persist
               until docker version >/dev/null 2>&1; do sleep 1; done
+              docker rm -f ataka-wireguard >/dev/null 2>&1 || true
               docker rm -f ataka-exploit >/dev/null 2>&1 || true
               docker run -d --name ataka-exploit busybox:1.36 sleep infinity
+{{- if (get $wireguard "enabled" | default false) }}
+              docker run -d \
+                --name ataka-wireguard \
+                --network container:ataka-exploit \
+                --cap-add NET_ADMIN \
+                --device /dev/net/tun \
+                -v /etc/ataka-wireguard/{{ get $wireguard "configKey" | default "wg0.conf" }}:/etc/wireguard/wg0.conf:ro \
+                {{ get $wireguard "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-wireguard:latest" }}
+              until docker exec ataka-wireguard wg show wg0 >/dev/null 2>&1; do sleep 1; done
+{{- end }}
               exec sh /ataka/common/delayed_start.sh -- python -m ataka.executor
           securityContext:
             runAsGroup: 966
@@ -98,4 +117,13 @@ spec:
         - name: persists
           persistentVolumeClaim:
             claimName: persists
+{{- if (get $wireguard "enabled" | default false) }}
+        - name: ataka-wireguard-config
+          secret:
+            secretName: {{ get $wireguard "secretName" | default "ataka-wireguard-config" }}
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+{{- end }}
       

@@ -751,6 +751,14 @@ module "kube-hetzner" {
       port            = "22"
       source_ips      = [] # Won't be used for this rule
       destination_ips = ["0.0.0.0/0", "::/0"]
+    },
+    {
+      description     = "Allow Ataka WireGuard test target"
+      direction       = "out"
+      protocol        = "udp"
+      port            = "51820"
+      source_ips      = []
+      destination_ips = ["77.42.45.155/32"]
     }
   ]
 

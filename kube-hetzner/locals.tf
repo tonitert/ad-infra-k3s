@@ -759,7 +759,6 @@ image:
   tag: ${var.traefik_image_tag}
 deployment:
   replicas: ${local.ingress_replica_count}
-globalArguments: []
 service:
   enabled: true
   type: LoadBalancer
@@ -861,6 +860,8 @@ additionalArguments:
 %{for option in var.traefik_additional_options~}
   - "${option}"
 %{endfor~}
+gatewayClass:
+  enabled: false
 %{if var.traefik_resource_limits~}
 resources:
   requests:

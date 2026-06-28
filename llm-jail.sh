@@ -15,11 +15,15 @@ fi
 EOF
 
 # llm-jail from https://github.com/braiins/llm-jail
-nix run ../llm-jail/#codex -- --dangerous --vcpu 6 --mem 8192 --dev-env \
+nix run ../llm-jail/#codex -- --dangerous --vcpu 6 --mem 8192 --store-disk 30 --dev-env \
     --ro-mount "$bash_env_dir" \
     --allow-domain cache.nixos.org \
     --allow-domain channels.nixos.org \
+    --allow-domain gitlab.com \
     --allow-domain github.com --allow-domain api.github.com --allow-domain raw.githubusercontent.com \
+    --allow-domain ghcr.io --allow-domain pkg-containers.githubusercontent.com \
+    --allow-domain registry-1.docker.io --allow-domain auth.docker.io --allow-domain index.docker.io \
+    --allow-domain production.cloudfront.docker.com \
     --allow-domain registry.npmjs.org --allow-domain pypi.org --allow-domain files.pythonhosted.org \
     --allow-domain crates.io --allow-domain static.crates.io --allow-domain cdn.crates.io \
     --allow-domain sourceforge.net --allow-domain savannah.gnu.org \
@@ -32,5 +36,7 @@ nix run ../llm-jail/#codex -- --dangerous --vcpu 6 --mem 8192 --dev-env \
     --allow-domain ctfnote.ad.tertsonen.xyz:80 \
     --allow-domain ataka.ad.tertsonen.xyz \
     --allow-domain 204.168.241.208 \
+    --allow-domain 77.42.45.155:22 \
+    --allow-domain test.ad.tertsonen.xyz:22 \
     -- -c shell_environment_policy.inherit=all \
     -c "shell_environment_policy.set.BASH_ENV=\"$bash_env\""
