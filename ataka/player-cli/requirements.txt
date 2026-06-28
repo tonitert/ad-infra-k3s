@@ -1,2 +1,4 @@
-typer[all]
+typer
+click>=8,<9
+rich>=13.8
 requests

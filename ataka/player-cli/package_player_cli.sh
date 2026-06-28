@@ -33,5 +33,7 @@ Path("player-cli/player_cli/auth.py").write_text(
 )
 PY
 pip install -r player-cli/requirements.txt --target player-cli/
-python -m zipapp -c --python "/usr/bin/env python3" --output /data/shared/ataka-player-cli.pyz player-cli/
+python -m zipapp -c --python "/usr/bin/env python3" --output "$TMPFILE/ataka-player-cli.pyz" player-cli/
+python "$TMPFILE/ataka-player-cli.pyz" --help >/dev/null
+mv "$TMPFILE/ataka-player-cli.pyz" /data/shared/ataka-player-cli.pyz
 echo 'Python player created'
