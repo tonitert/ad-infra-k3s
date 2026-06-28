@@ -1,15 +1,17 @@
 {{- $ingress := .Values.ingress | default dict -}}
 {{- $basicAuth := get $ingress "basicAuth" | default dict -}}
+{{- $basicAuthEnabled := true -}}
+{{- if hasKey $basicAuth "enabled" -}}
+{{- $basicAuthEnabled = get $basicAuth "enabled" -}}
+{{- end -}}
 {{- if (get $ingress "enabled" | default false) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ataka
   namespace: ataka
-{{- if (get $basicAuth "enabled" | default true) }}
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: ataka-ataka-basic-auth@kubernetescrd
-{{- end }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ ternary "ataka-ataka-middleware-chain@kubernetescrd" "ataka-ataka-api-normalize-path@kubernetescrd" $basicAuthEnabled }}
 spec:
   ingressClassName: traefik
   tls:

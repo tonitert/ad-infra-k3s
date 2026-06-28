@@ -1,5 +1,9 @@
 {{- $ingress := .Values.ingress | default dict -}}
 {{- $basicAuth := get $ingress "basicAuth" | default dict -}}
+{{- $basicAuthEnabled := true -}}
+{{- if hasKey $basicAuth "enabled" -}}
+{{- $basicAuthEnabled = get $basicAuth "enabled" -}}
+{{- end -}}
 {{- if (get $ingress "enabled" | default false) }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -21,13 +25,20 @@ spec:
         - path:
             type: PathPrefix
             value: /
-{{- if (get $basicAuth "enabled" | default true) }}
+{{- if $basicAuthEnabled }}
       filters:
         - type: ExtensionRef
           extensionRef:
             group: traefik.io
             kind: Middleware
-            name: ataka-basic-auth
+            name: ataka-middleware-chain
+{{- else }}
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: ataka-api-normalize-path
 {{- end }}
       backendRefs:
         - name: api
