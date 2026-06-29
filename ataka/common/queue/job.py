@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from .queue import WorkQueue, Message
+from .queue import PubSubQueue, WorkQueue, Message
 
 
 class JobAction(str, Enum):
@@ -17,4 +17,9 @@ class JobMessage(Message):
 
 class JobQueue(WorkQueue):
     queue_name = "job"
+    message_type = JobMessage
+
+
+class JobCancelQueue(PubSubQueue):
+    queue_name = "job_cancel"
     message_type = JobMessage

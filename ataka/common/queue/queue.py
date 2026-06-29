@@ -55,6 +55,11 @@ class Queue(ABC):
                 async with message.process(ignore_processed=True):
                     yield self.message_type.from_bytes(message.body)
 
+    async def wait_for_raw_messages(self, **kwargs):
+        async with (await self._get_queue()).iterator(**kwargs) as queue_iter:
+            async for message in queue_iter:
+                yield self.message_type.from_bytes(message.body), message
+
     async def clear(self):
         queue = await self._get_queue()
         return await queue.purge()

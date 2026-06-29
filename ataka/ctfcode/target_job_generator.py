@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from ataka.common import database
 from ataka.common.database.models import Job, Target, Execution, ExploitHistory
-from ataka.common.queue import JobQueue, get_channel, JobMessage, JobAction
+from ataka.common.queue import JobQueue, JobCancelQueue, get_channel, JobMessage, JobAction
 from ataka.common.job_execution_status import JobExecutionStatus
 from .ctf import CTF
 
@@ -20,17 +20,27 @@ class TargetJobGenerator:
     async def run_loop(self):
         async with get_channel() as channel:
             job_queue = await JobQueue.get(channel)
+            cancel_queue = await JobCancelQueue.get(channel)
 
             async with database.get_session() as session:
                 # Get all queued jobs
                 await job_queue.clear()
                 get_future_jobs = select(Job) \
                     .where((Job.exploit_id != None) &
-                           Job.status.in_([JobExecutionStatus.QUEUED, JobExecutionStatus.RUNNING]))
-                future_jobs = (await session.execute(get_future_jobs)).scalars()
+                           Job.status.in_([JobExecutionStatus.QUEUED, JobExecutionStatus.RUNNING])) \
+                    .options(selectinload(Job.executions))
+                future_jobs = list((await session.execute(get_future_jobs)).scalars())
+
+                for job in future_jobs:
+                    job.status = JobExecutionStatus.CANCELLED
+                    for execution in job.executions:
+                        execution.status = JobExecutionStatus.CANCELLED
+
+                await session.commit()
+
                 # cancel the jobs
                 for job in future_jobs:
-                    await job_queue.send_message(JobMessage(action=JobAction.CANCEL, job_id=job.id))
+                    await cancel_queue.send_message(JobMessage(action=JobAction.CANCEL, job_id=job.id))
 
             while True:
                 if (sleep_duration := self._ctf.get_start_time() - time.time()) > 0:

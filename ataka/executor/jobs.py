@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload, joinedload
 
 from ataka.common import database
 from ataka.common.database.models import Job, Execution, Exploit
-from ataka.common.queue import get_channel, JobQueue, JobAction, OutputQueue, OutputMessage
+from ataka.common.queue import get_channel, JobQueue, JobCancelQueue, JobAction, OutputQueue, OutputMessage
 from .localdata import *
 
 
@@ -20,33 +20,75 @@ class BuildError(Exception):
     pass
 
 
+TERMINAL_STATUSES = {
+    JobExecutionStatus.FINISHED,
+    JobExecutionStatus.FAILED,
+    JobExecutionStatus.TIMEOUT,
+    JobExecutionStatus.CANCELLED,
+}
+
+
 class Jobs:
     def __init__(self, docker, exploits):
         self._docker = docker
         self._exploits = exploits
         self._jobs = {}
+        self._job_executions = {}
 
     async def poll_and_run_jobs(self):
-        async with get_channel() as channel:
-            job_queue = await JobQueue.get(channel)
+        async with get_channel() as job_channel, get_channel() as cancel_channel:
+            prefetch_count = int(os.environ.get("EXECUTOR_PREFETCH", "1"))
+            await job_channel.set_qos(prefetch_count=prefetch_count)
 
-            async for job_message in job_queue.wait_for_messages():
-                match job_message.action:
-                    case JobAction.CANCEL:
-                        print(f"DEBUG: CURRENTLY RUNNING {len(self._jobs)}")
-                        result = [(task, job) for task, job in self._jobs.items() if job.id == job_message.job_id]
-                        if len(result) > 0:
-                            task, job = result[0]
-                            await task.cancel()
-                    case JobAction.QUEUE:
-                        job_execution = JobExecution(self._docker, self._exploits, channel, job_message.job_id)
-                        task = asyncio.create_task(job_execution.run())
+            await asyncio.gather(
+                self._poll_job_queue(job_channel),
+                self._poll_cancel_queue(cancel_channel),
+            )
 
-                        def on_done(job):
-                            del self._jobs[job]
+    async def _poll_job_queue(self, channel):
+        job_queue = await JobQueue.get(channel)
 
-                        self._jobs[task] = job_execution
-                        task.add_done_callback(on_done)
+        async for job_message, raw_message in job_queue.wait_for_raw_messages():
+            if job_message.action != JobAction.QUEUE:
+                await raw_message.ack()
+                continue
+
+            job_execution = JobExecution(self._docker, self._exploits, channel, job_message.job_id)
+            task = asyncio.create_task(job_execution.run())
+            self._jobs[job_message.job_id] = task
+            self._job_executions[job_message.job_id] = job_execution
+
+            try:
+                terminal = await task
+            except asyncio.CancelledError:
+                if asyncio.current_task().cancelling():
+                    raise
+                terminal = await job_execution.cancel()
+            except Exception:
+                print(f"Unexpected executor failure for job {job_message.job_id}")
+                traceback.print_exc()
+                await raw_message.reject(requeue=True)
+            else:
+                if terminal:
+                    await raw_message.ack()
+                else:
+                    await raw_message.reject(requeue=True)
+            finally:
+                if self._jobs.get(job_message.job_id) is task:
+                    self._jobs.pop(job_message.job_id, None)
+                    self._job_executions.pop(job_message.job_id, None)
+
+    async def _poll_cancel_queue(self, channel):
+        cancel_queue = await JobCancelQueue.get(channel)
+
+        async for job_message in cancel_queue.wait_for_messages():
+            if job_message.action != JobAction.CANCEL:
+                continue
+
+            print(f"DEBUG: CURRENTLY RUNNING {len(self._jobs)}")
+            task = self._jobs.get(job_message.job_id)
+            if task is not None:
+                task.cancel()
 
 
 class JobExecution:
@@ -56,11 +98,12 @@ class JobExecution:
         self._exploits = exploits
         self._channel = channel
         self._data_store = os.environ["DATA_STORE"]
+        self._container_ref = None
 
     async def run(self):
         job = await self.fetch_job_from_database()
         if job is None:
-            return
+            return True
 
         exploit = job.exploit
 
@@ -100,6 +143,7 @@ class JobExecution:
                     },
                 },
             )
+            self._container_ref = container_ref
 
             await container_ref.start()
         except DockerError as exception:
@@ -111,20 +155,24 @@ class JobExecution:
             await self.submit_to_database(job.executions)
             raise exception
 
-        execute_tasks = [self.docker_execute(container_ref, e) for e in job.executions]
+        try:
+            execute_tasks = [self.docker_execute(container_ref, e) for e in job.executions]
 
-        print(f"Starting {len(execute_tasks)} tasks for exploit {exploit.id} (service {exploit.service}) by {exploit.author}")
+            print(f"Starting {len(execute_tasks)} tasks for exploit {exploit.id} (service {exploit.service}) by {exploit.author}")
 
-        # Execute all the exploits
-        results = await asyncio.gather(*execute_tasks)
+            # Execute all the exploits
+            results = await asyncio.gather(*execute_tasks)
 
-        # try:
-        #    os.rmdir(persist_dir)
-        # except (FileNotFoundError, OSError):
-        #    pass
+            # try:
+            #    os.rmdir(persist_dir)
+            # except (FileNotFoundError, OSError):
+            #    pass
 
-        await self.submit_to_database(results)
-        # TODO: send to ctfconfig
+            await self.submit_to_database(results)
+            # TODO: send to ctfconfig
+            return True
+        except asyncio.CancelledError:
+            return await self.cancel()
 
     async def fetch_job_from_database(self) -> Optional[LocalJob]:
         async with database.get_session() as session:
@@ -133,6 +181,9 @@ class JobExecution:
             )
             job = (await session.execute(get_job)).unique().scalar_one()
             executions = job.executions
+
+            if job.status in TERMINAL_STATUSES:
+                return None
 
             time_left = job.timeout.timestamp() - time.time()
             if time_left < 0:
@@ -168,6 +219,35 @@ class JobExecution:
             # Convert data to local for usage without database
             return LocalJob(local_exploit, job.timeout.timestamp(), local_executions)
 
+    async def cancel(self):
+        await self.cleanup_container()
+        async with database.get_session() as session:
+            get_job = select(Job).where(Job.id == self.id).options(selectinload(Job.executions))
+            job = (await session.execute(get_job)).scalar_one()
+            job.status = JobExecutionStatus.CANCELLED
+
+            for execution in job.executions:
+                if execution.status not in TERMINAL_STATUSES:
+                    execution.status = JobExecutionStatus.CANCELLED
+                    execution.stderr = (execution.stderr or "") + "<EXECUTOR CANCELLED>"
+
+            await session.commit()
+        return True
+
+    async def cleanup_container(self):
+        if self._container_ref is None:
+            return
+
+        try:
+            await self._container_ref.kill()
+        except DockerError:
+            pass
+
+        try:
+            await self._container_ref.delete(force=True)
+        except DockerError:
+            pass
+
     async def submit_to_database(self, results: [LocalExecution]):
         local_executions = {e.database_id: e for e in results}
         status = JobExecutionStatus.FAILED if any([e.status == JobExecutionStatus.FAILED for e in results]) \
@@ -178,6 +258,8 @@ class JobExecution:
         async with database.get_session() as session:
             get_job = select(Job).where(Job.id == self.id)
             job = (await session.execute(get_job)).scalar_one()
+            if job.status == JobExecutionStatus.CANCELLED:
+                return
             job.status = status
 
             get_executions = select(Execution).where(Execution.job_id == self.id) \
