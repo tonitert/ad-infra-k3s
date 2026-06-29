@@ -16,4 +16,4 @@ COPY ataka/api/requirements.txt /ataka/api/
 RUN pip install --no-cache-dir -r /ataka/api/requirements.txt
 COPY ataka/api /ataka/api
 
-CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--host", "0.0.0.0", "ataka.api:app"]
+CMD [ "sh", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--host", "0.0.0.0", "ataka.api:app"]

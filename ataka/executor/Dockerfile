@@ -19,4 +19,4 @@ COPY ataka/executor/requirements.txt /ataka/executor/
 RUN pip install --break-system-packages --no-cache-dir -r /ataka/executor/requirements.txt
 COPY ataka/executor /ataka/executor
 
-CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.executor" ]
+CMD [ "sh", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.executor" ]

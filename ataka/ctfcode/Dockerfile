@@ -20,4 +20,4 @@ RUN pip install --no-cache-dir -r /ataka/ctfcode/requirements.txt
 COPY ataka/ctfcode /ataka/ctfcode
 COPY ataka/ctfconfig /ataka/ctfconfig
 
-CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.ctfcode" ]
+CMD [ "sh", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.ctfcode" ]
