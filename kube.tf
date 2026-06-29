@@ -51,7 +51,7 @@ module "kube-hetzner" {
   # For more details on SSH see https://github.com/kube-hetzner/kube-hetzner/blob/master/docs/ssh.md
   ssh_private_key = var.ssh_key_path != "" ? file(var.ssh_key_path) : tls_private_key.ssh_key.private_key_openssh
   # You can add additional SSH public Keys to grant other team members root access to your cluster nodes.
-  ssh_additional_public_keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG7amwnfT3AwqBmZ5gqC3LuxXEpNG8TR29XE3xl72RYz tonit@toni-thinkpad" ]
+  ssh_additional_public_keys = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG7amwnfT3AwqBmZ5gqC3LuxXEpNG8TR29XE3xl72RYz tonit@toni-thinkpad"]
 
   # You can also add additional SSH public Keys which are saved in the hetzner cloud by a label.
   # See https://docs.hetzner.cloud/#label-selector
@@ -133,7 +133,7 @@ module "kube-hetzner" {
   control_plane_nodepools = [
     {
       name        = "control-plane-hel1",
-      server_type = "cx43",
+      server_type = "cx33",
       location    = "hel1",
       labels      = [],
       taints      = [],
@@ -318,24 +318,16 @@ module "kube-hetzner" {
   #
   # * Example below:
   autoscaler_nodepools = [
-   {
-     name        = "autoscaled-small"
-     server_type = "cx32"
-     location    = "hel1"
-     min_nodes   = 0
-     max_nodes   = 2
-     labels      = {
-       "node.kubernetes.io/role": "peak-workloads"
-     }
-     taints      = [
-       {
-        key= "node.kubernetes.io/role"
-        value= "peak-workloads"
-        effect= "NoExecute"
-       }
-     ]
-     # kubelet_args = ["kube-reserved=cpu=250m,memory=1500Mi,ephemeral-storage=1Gi", "system-reserved=cpu=250m,memory=300Mi"]
-   }
+    {
+      name        = "autoscaled-small"
+      server_type = "cpx11"
+      location    = "hel1"
+      min_nodes   = 0
+      max_nodes   = 2
+      labels      = {}
+      taints      = []
+      # kubelet_args = ["kube-reserved=cpu=250m,memory=1500Mi,ephemeral-storage=1Gi", "system-reserved=cpu=250m,memory=300Mi"]
+    }
   ]
   #
   # To disable public ips on your autoscaled nodes, uncomment the following lines:
@@ -745,7 +737,7 @@ module "kube-hetzner" {
   # More info on the format here https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/firewall
   extra_firewall_rules = [
     {
-      description = "Allow SSH for rsync"
+      description     = "Allow SSH for rsync"
       direction       = "out"
       protocol        = "tcp"
       port            = "22"
@@ -995,24 +987,24 @@ cainjector:
   # We advise you to not touch this and to let the defaults that are already set under the hood.
   # For advanced use cases like adding Hetzner Robot servers, see: https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/blob/master/docs/add-robot-server.md
   # The following is an example, please note that the current indentation inside the EOT is important.
-# hetzner_ccm_values = <<EOT
-# networking:
-#   enabled: true
-# args:
-#   cloud-provider: hcloud
-#   allow-untagged-cloud: ""
-#   route-reconciliation-period: 30s
-#   webhook-secure-port: "0"
-# env:
-#   HCLOUD_LOAD_BALANCERS_LOCATION:
-#     value: "hel1"
-#   HCLOUD_LOAD_BALANCERS_USE_PRIVATE_IP:
-#     value: "true"
-#   HCLOUD_LOAD_BALANCERS_ENABLED:
-#     value: "true"
-#   HCLOUD_LOAD_BALANCERS_DISABLE_PRIVATE_INGRESS:
-#     value: "true"
-#   EOT
+  # hetzner_ccm_values = <<EOT
+  # networking:
+  #   enabled: true
+  # args:
+  #   cloud-provider: hcloud
+  #   allow-untagged-cloud: ""
+  #   route-reconciliation-period: 30s
+  #   webhook-secure-port: "0"
+  # env:
+  #   HCLOUD_LOAD_BALANCERS_LOCATION:
+  #     value: "hel1"
+  #   HCLOUD_LOAD_BALANCERS_USE_PRIVATE_IP:
+  #     value: "true"
+  #   HCLOUD_LOAD_BALANCERS_ENABLED:
+  #     value: "true"
+  #   HCLOUD_LOAD_BALANCERS_DISABLE_PRIVATE_INGRESS:
+  #     value: "true"
+  #   EOT
 
   # csi-driver-smb, all csi-driver-smb helm values can be found at https://github.com/kubernetes-csi/csi-driver-smb/blob/master/charts/latest/csi-driver-smb/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
@@ -1045,7 +1037,7 @@ controller:
 
   # Longhorn, all Longhorn helm values can be found at https://github.com/longhorn/longhorn/blob/master/chart/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
-longhorn_values = <<EOT
+  longhorn_values = <<EOT
 persistence:
   defaultFsType: ext4
   defaultClassReplicaCount: 1
