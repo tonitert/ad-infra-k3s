@@ -8,7 +8,7 @@ openvpn:
   enabled: false
 
 wireguard:
-  enabled: true
+  enabled: false
   image: ghcr.io/tonitert/ad-infra-k3s/ataka-wireguard:latest
   secretName: ataka-wireguard-config
   configKey: wg0.conf
