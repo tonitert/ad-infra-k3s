@@ -5,7 +5,7 @@ from ataka.common.flag_status import FlagStatus
 ### EXPORTED CONFIG
 
 # Ataka Host Domain / IP
-ATAKA_HOST = 'ataka.h4xx.eu'
+ATAKA_HOST = 'ataka.ad.tertsonen.xyz'
 
 # Default targets for atk runlocal
 RUNLOCAL_TARGETS = ["10.99.0.2"]
@@ -13,7 +13,7 @@ RUNLOCAL_TARGETS = ["10.99.0.2"]
 # IPs that are always excluded from attacks.
 STATIC_EXCLUSIONS = {'10.99.1.2'}
 
-ROUND_TIME = 10
+ROUND_TIME = 20
 
 # format: regex, group where group 0 means the whole regex
 FLAG_REGEX = r"[A-Z0-9]{31}=", 0
@@ -24,15 +24,15 @@ FLAG_BATCHSIZE = 100
 FLAG_RATELIMIT = 1  # Wait in seconds between each call of submit_flags()
 
 # When the CTF starts
-START_TIME = 1690227547
+START_TIME = 1782930692
 
 
 ### END EXPORTED CONFIG
 
 def get_targets():
-    services = ["buffalo", "gopher_coin", "kyc", "oly_consensus", "swiss_keys", "to_the_moon", "wall.eth"]
+    services = ["http", "http2"]
 
-    default_targets = {service: {f"10.99.{i}.2": ["1234", "5678"] for i in range(10)} for service in services}
+    default_targets = {service: {f"10.99.{i}.2": ["80"] for i in [ 0 ]} for service in services}
 
     # remote fetch here
     flag_ids = default_targets
