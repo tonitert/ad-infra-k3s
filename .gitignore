@@ -30,3 +30,4 @@ venv/
 data/
 ataka-player-cli.pyz
 ataka/player-cli/player_cli/ctfconfig.py
+exploits

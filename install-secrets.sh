@@ -4,14 +4,9 @@ set -e
 
 echo "Loading kubeconfig..."
 
-if [ -n "${KUBECONFIG:-}" ]; then
-    export KUBECONFIG
-elif [ -s k3s_kubeconfig.yaml ]; then
-    export KUBECONFIG=$(pwd)/k3s_kubeconfig.yaml
-else
-    terraform output --raw kubeconfig > k3s_kubeconfig.yaml
-    export KUBECONFIG=$(pwd)/k3s_kubeconfig.yaml
-fi
+
+tofu output --raw kubeconfig > k3s_kubeconfig.yaml
+export KUBECONFIG=$(pwd)/k3s_kubeconfig.yaml
 
 # Generate sealed secrets from helm templates
 echo "Generating sealed secrets..."

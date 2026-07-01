@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-host="${WG_TARGET_HOST:-77.42.45.155}"
+host="${WG_TARGET_HOST:-$(read -p 'Enter the WireGuard target host (IP or hostname): ' input && echo "$input")}"
 port="${WG_TARGET_PORT:-51820}"
 server_ip="${WG_SERVER_IP:-10.99.0.2}"
 client_ip="${WG_CLIENT_IP:-10.99.0.1}"
