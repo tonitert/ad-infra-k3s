@@ -54,7 +54,7 @@ spec:
           resources:
             requests:
               cpu: 600m
-              memory: 600Mi
+              memory: 1000Mi
       containers:
 {{- if (get $wireguard "enabled" | default false) }}
         - image: {{ get $wireguard "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-wireguard:latest" }}
