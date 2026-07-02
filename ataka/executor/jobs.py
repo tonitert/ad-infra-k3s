@@ -138,7 +138,7 @@ class JobExecution:
                             }
                         ],
                         "CapAdd": ["NET_RAW"],
-                        "NetworkMode": "container:ataka-exploit",
+                        # "NetworkMode": "container:ataka-exploit",
                         "CpusetCpus": os.environ.get('EXPLOIT_CPUSET', ''),
                     },
                 },
