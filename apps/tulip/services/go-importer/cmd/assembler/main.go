@@ -86,10 +86,12 @@ var dumpPcapsFilename = flag.String("dump-pcaps-filename", "2006-01-02_15-04-05.
 Reference: https://pkg.go.dev/time#Layout`)
 var maxFlowItemSize = flag.Int("max-flow-item-size", 16, `Maximum size in MiB of one flow item record.
 While PostgreSQL technically supports values up to 1GiB, they are not very nice to work with.`)
+var healthAddr = flag.String("health-addr", ":8080", "Address for the assembler health check HTTP server. Empty disables the server.")
 
 var g_db *db.Database
 var workerPool *workerpool.WorkerPool
 var flagValidator FlagValidator
+var healthTracker *AssemblerHealth
 
 // flagid caching (only once per tick)
 var flagids []db.FlagId
@@ -197,6 +199,12 @@ func main() {
 	defer util.Run()()
 
 	flag.Parse()
+
+	healthTracker = NewAssemblerHealth(time.Now())
+	if *healthAddr != "" {
+		healthTracker.StartServer(*healthAddr)
+	}
+
 	if flag.NArg() < 1 && *watch_dir == "" {
 		log.Fatal("Usage: ./go-importer <file0.pcap> ... <fileN.pcap>")
 	}
@@ -251,7 +259,7 @@ func main() {
 			log.Fatal("Invalid start time: ", err)
 		}
 		flagTickStart = startTime
-	} 
+	}
 
 	if concurrentFlows == nil || *concurrentFlows == 0 {
 		*concurrentFlows = runtime.NumCPU() / 2
@@ -302,7 +310,7 @@ func main() {
 		}
 		*flagValidatorTeam = parsed
 	}
-	
+
 	// Flag validator setup
 	if *flagValidatorType != "" && *flag_regex == "" {
 		log.Println("WARNING: Flag validation enabled but no flag regex specified. No flag validation will be done.")
@@ -330,14 +338,13 @@ func main() {
 			time.Duration(*ticklength) * time.Second,
 		}
 	case "":
-		if *flagValidatorTeam != -1  {
+		if *flagValidatorTeam != -1 {
 			log.Println("WARNING: No flag validator type specified but additional flag validator options are set. No flag validation will be done.")
 		}
 		flagValidator = &DummyFlagValidator{}
 	default:
 		log.Fatalln("Uknown -flag-validator-type: ", *flagValidatorType)
 	}
-
 
 	log.Println("Connecting to Timescale:", *timescale)
 	g_db = db.NewDatabase(*timescale)
@@ -601,14 +608,15 @@ func (service *AssemblerService) ProcessPcapHandle(handle *pcap.Handle, sourceNa
 		// NOTE: PCAP-over-IP: pcapOpenOfflineFile is blocking so we need at least see some packets passing by to get here.
 		if service.FlushInterval != 0 && lastFlush.Add(service.FlushInterval).Unix() < time.Now().Unix() {
 			service.FlushConnections()
-			log.Println("Processed", count - pcap.Position, "packets from", sourceName, "(so far)")
+			log.Println("Processed", count-pcap.Position, "packets from", sourceName, "(so far)")
 			lastFlush = time.Now()
 		}
 
 		count++
 
 		// Skip packets that were already processed from this pcap
-		if count < pcap.Position + 1 {
+		if count < pcap.Position+1 {
+			markHealthProcessed()
 			continue
 		}
 
@@ -636,6 +644,7 @@ func (service *AssemblerService) ProcessPcapHandle(handle *pcap.Handle, sourceNa
 			if err != nil {
 				log.Fatalln("Error while de-fragmenting", err)
 			} else if newip4 == nil {
+				markHealthProcessed()
 				continue // packet fragment, we don't have whole packet yet.
 			}
 			if newip4.Length != l {
@@ -650,6 +659,7 @@ func (service *AssemblerService) ProcessPcapHandle(handle *pcap.Handle, sourceNa
 
 		transport := packet.TransportLayer()
 		if transport == nil {
+			markHealthProcessed()
 			continue
 		}
 
@@ -698,13 +708,21 @@ func (service *AssemblerService) ProcessPcapHandle(handle *pcap.Handle, sourceNa
 		}
 
 		if done {
+			markHealthProcessed()
 			break
 		}
+		markHealthProcessed()
 	}
 
 	g_db.PcapSetPosition(pcap.Id, count)
 	service.FlushConnections()
-	log.Println("Processed", count - pcap.Position, "packets from", sourceName)
+	log.Println("Processed", count-pcap.Position, "packets from", sourceName)
+}
+
+func markHealthProcessed() {
+	if healthTracker != nil {
+		healthTracker.MarkProcessed()
+	}
 }
 
 func (service *AssemblerService) DumpPacket(packet *gopacket.Packet) {

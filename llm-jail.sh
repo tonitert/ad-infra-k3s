@@ -38,5 +38,10 @@ nix run ../llm-jail/#codex -- --dangerous --vcpu 6 --mem 8192 --store-disk 30 --
     --allow-domain 204.168.241.208 \
     --allow-domain 77.42.45.155:22 \
     --allow-domain test.ad.tertsonen.xyz:22 \
+    --allow-domain proxy.golang.org \
+    --allow-domain sum.golang.org \
+    --allow-domain dl-cdn.alpinelinux.org \
+    --allow-domain deb.debian.org \
+    --allow-domain security.debian.org \
     -- -c shell_environment_policy.inherit=all \
     -c "shell_environment_policy.set.BASH_ENV=\"$bash_env\""

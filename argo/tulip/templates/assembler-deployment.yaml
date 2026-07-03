@@ -38,6 +38,24 @@ spec:
                 name: tulip-config
           image: ghcr.io/tonitert/ad-infra-k3s/tulip-assembler:latest
           name: assembler
+          ports:
+            - containerPort: 8080
+              name: health
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - |
+                  last="$(wget -qO- http://127.0.0.1:8080/healthz)"
+                  case "$last" in ''|*[!0-9]*) exit 1;; esac
+                  now="$(date +%s)"
+                  test $((now - last)) -le 240
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 1
           volumeMounts:
             - mountPath: /traffic
               name: traffic
