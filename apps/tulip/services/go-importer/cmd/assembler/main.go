@@ -568,6 +568,8 @@ func (service *AssemblerService) HandlePcapFile(file *os.File, sourceName string
 }
 
 func (service *AssemblerService) ProcessPcapHandle(handle *pcap.Handle, sourceName string) {
+	markHealthProcessed()
+
 	if service.BpfFilter != "" {
 		if err := handle.SetBPFFilter(service.BpfFilter); err != nil {
 			log.Println("Set BPF Filter error: ", err)

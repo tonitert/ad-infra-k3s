@@ -51,7 +51,18 @@ spec:
                   last="$(wget -qO- http://127.0.0.1:8080/healthz)"
                   case "$last" in ''|*[!0-9]*) exit 1;; esac
                   now="$(date +%s)"
-                  test $((now - last)) -le 240
+                  if [ $((now - last)) -le 240 ]; then
+                    exit 0
+                  fi
+                  newest="$last"
+                  for pcap in /traffic/*.pcap*; do
+                    [ -e "$pcap" ] || continue
+                    mtime="$(stat -c %Y "$pcap")"
+                    ctime="$(stat -c %Z "$pcap")"
+                    [ "$mtime" -gt "$newest" ] && newest="$mtime"
+                    [ "$ctime" -gt "$newest" ] && newest="$ctime"
+                  done
+                  test "$newest" -le "$last"
             initialDelaySeconds: 60
             periodSeconds: 20
             timeoutSeconds: 3
