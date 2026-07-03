@@ -48,7 +48,7 @@ metadata:
   name: ctfnote-pad
   namespace: ctfnote
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: ctfnote-ctfnote-pad-basic-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: ctfnote-ctfnote-pad-basic-auth@kubernetescrd,ctfnote-ctfnote-pad-strip-prefix@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:

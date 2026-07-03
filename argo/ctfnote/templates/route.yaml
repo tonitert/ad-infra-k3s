@@ -87,11 +87,11 @@ spec:
             group: traefik.io
             kind: Middleware
             name: ctfnote-pad-basic-auth
-        - type: URLRewrite
-          urlRewrite:
-            path:
-              type: ReplacePrefixMatch
-              replacePrefixMatch: /
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: ctfnote-pad-strip-prefix
         - type: RequestHeaderModifier
           requestHeaderModifier:
             add:
