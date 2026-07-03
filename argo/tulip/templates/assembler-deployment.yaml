@@ -52,10 +52,10 @@ spec:
                   case "$last" in ''|*[!0-9]*) exit 1;; esac
                   now="$(date +%s)"
                   test $((now - last)) -le 240
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 1
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 2
           volumeMounts:
             - mountPath: /traffic
               name: traffic
