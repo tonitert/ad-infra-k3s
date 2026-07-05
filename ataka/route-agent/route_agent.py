@@ -1,4 +1,5 @@
 import os
+import ipaddress
 import subprocess
 import time
 
@@ -31,6 +32,10 @@ def first_for_family(values, family):
     return None
 
 
+def network_address(cidr):
+    return str(ipaddress.ip_network(cidr, strict=False).network_address)
+
+
 def pod_ips(pod):
     ips = []
     for item in getattr(pod.status, "pod_ips", None) or []:
@@ -54,9 +59,36 @@ def gateway_ips(v1):
     return list(dict.fromkeys(ips))
 
 
+def gateway_nodes(v1):
+    nodes = []
+    pods = v1.list_namespaced_pod(NAMESPACE, label_selector=GATEWAY_SELECTOR).items
+    for pod in pods:
+        if pod.status.phase == "Running" and pod.spec.node_name:
+            nodes.append(pod.spec.node_name)
+    return list(dict.fromkeys(nodes))
+
+
+def node_pod_cidrs(v1, node_name):
+    node = v1.read_node(node_name)
+    cidrs = list(getattr(node.spec, "pod_cidrs", None) or [])
+    if getattr(node.spec, "pod_cidr", None):
+        cidrs.append(node.spec.pod_cidr)
+    return list(dict.fromkeys(cidrs))
+
+
 def node_ips(v1):
     node = v1.read_node(NODE_NAME)
     return [address.address for address in node.status.addresses if address.type == "InternalIP"]
+
+
+def route_dev_for(family, destination):
+    result = run("ip", f"-{family}", "route", "get", destination)
+    if result.returncode != 0:
+        return None
+    parts = result.stdout.split()
+    if "dev" not in parts:
+        return None
+    return parts[parts.index("dev") + 1]
 
 
 def selected_pod_ips(v1):
@@ -93,7 +125,13 @@ def ensure_fwmark_rule(family):
         run("ip", f"-{family}", "rule", "add", "fwmark", ROUTE_MARK, "table", ROUTE_TABLE)
 
 
-def install_routes(all_node_ips, all_gateway_ips):
+def ensure_destination_rule(family, cidr):
+    needle = f"to {cidr} lookup {ROUTE_TABLE}"
+    if not rule_exists(family, needle):
+        run("ip", f"-{family}", "rule", "add", "to", cidr, "table", ROUTE_TABLE)
+
+
+def install_routes(v1, all_node_ips, all_gateway_ips, all_gateway_nodes):
     for cidr in ROUTE_CIDRS:
         family = family_for(cidr)
         gateway = first_for_family(all_gateway_ips, family)
@@ -103,8 +141,37 @@ def install_routes(all_node_ips, all_gateway_ips):
         if self_ip and gateway == self_ip and run("ip", "link", "show", "wg0").returncode == 0:
             run("ip", f"-{family}", "route", "replace", cidr, "dev", "wg0", "table", ROUTE_TABLE)
         else:
-            run("ip", f"-{family}", "route", "replace", cidr, "via", gateway, "table", ROUTE_TABLE)
+            gateway_node = first_for_family(
+                [
+                    network_address(pod_cidr)
+                    for node_name in all_gateway_nodes
+                    for pod_cidr in node_pod_cidrs(v1, node_name)
+                ],
+                family,
+            )
+            if gateway_node:
+                dev = route_dev_for(family, gateway_node)
+                if dev:
+                    run(
+                        "ip",
+                        f"-{family}",
+                        "route",
+                        "replace",
+                        cidr,
+                        "via",
+                        gateway_node,
+                        "dev",
+                        dev,
+                        "onlink",
+                        "table",
+                        ROUTE_TABLE,
+                    )
+                else:
+                    run("ip", f"-{family}", "route", "replace", cidr, "via", gateway_node, "table", ROUTE_TABLE)
+            else:
+                run("ip", f"-{family}", "route", "replace", cidr, "via", gateway, "table", ROUTE_TABLE)
         ensure_fwmark_rule(family)
+        ensure_destination_rule(family, cidr)
 
 
 def reconcile_rules_for_family(family, desired):
@@ -140,7 +207,7 @@ def main():
 
     while True:
         try:
-            install_routes(node_ips(v1), gateway_ips(v1))
+            install_routes(v1, node_ips(v1), gateway_ips(v1), gateway_nodes(v1))
             reconcile_rules(selected_pod_ips(v1))
             if ENABLE_DIND_MARKING:
                 for cidr in ROUTE_CIDRS:
