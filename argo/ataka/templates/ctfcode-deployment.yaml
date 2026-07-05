@@ -1,4 +1,5 @@
 {{- $openvpn := .Values.openvpn | default dict -}}
+{{- $wireguard := .Values.wireguard | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,6 +24,9 @@ spec:
       labels:
         io.kompose.network/ataka-ataka: "true"
         io.kompose.service: ctfcode
+{{- if (get $wireguard "enabled" | default false) }}
+        {{ get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route" }}: {{ get $wireguard "vpnRouteLabelValue" | default "true" | quote }}
+{{- end }}
     spec:
       containers:
 {{- if (get $openvpn "enabled" | default false) }}

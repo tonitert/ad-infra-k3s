@@ -10,6 +10,7 @@ images=(
   "ataka-ctfcode:ataka/ctfcode/Dockerfile"
   "ataka-executor:ataka/executor/Dockerfile"
   "ataka-wireguard:ataka/wireguard/Dockerfile"
+  "ataka-route-agent:ataka/route-agent/Dockerfile"
 )
 
 for image in "${images[@]}"; do

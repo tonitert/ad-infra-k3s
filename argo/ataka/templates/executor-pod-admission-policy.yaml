@@ -1,0 +1,35 @@
+{{- $executor := .Values.executor | default dict -}}
+{{- $policy := get $executor "podAdmissionPolicy" | default dict -}}
+{{- $enabled := true -}}
+{{- if hasKey $policy "enabled" -}}
+{{- $enabled = get $policy "enabled" -}}
+{{- end -}}
+{{- if $enabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ printf "%s-executor-pods" .Release.Name | trunc 63 | trimSuffix "-" }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: ataka-executor-service-account
+      expression: 'request.userInfo.username == "system:serviceaccount:{{ .Release.Namespace }}:{{ get $executor "serviceAccountName" | default "ataka-executor" }}"'
+  validations:
+    - expression: 'request.operation == "DELETE" ? has(oldObject.metadata.labels) && "ataka.ad.tertsonen.xyz/component" in oldObject.metadata.labels && oldObject.metadata.labels["ataka.ad.tertsonen.xyz/component"] == "exploit-execution" : has(object.metadata.labels) && "ataka.ad.tertsonen.xyz/component" in object.metadata.labels && object.metadata.labels["ataka.ad.tertsonen.xyz/component"] == "exploit-execution"'
+      message: "ataka executor may only create, update, or delete Ataka exploit execution pods"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ printf "%s-executor-pods" .Release.Name | trunc 63 | trimSuffix "-" }}
+spec:
+  policyName: {{ printf "%s-executor-pods" .Release.Name | trunc 63 | trimSuffix "-" }}
+  validationActions:
+    - Deny
+{{- end }}

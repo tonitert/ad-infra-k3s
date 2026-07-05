@@ -4,6 +4,20 @@ ingress:
   basicAuth:
     enabled: true
 
+executor:
+  replicas: 1
+  backend: kubernetes
+  image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
+  serviceAccountName: ataka-executor
+  buildkit:
+    builderName: ataka-buildkit
+    image: moby/buildkit:buildx-stable-1
+    replicas: 1
+    storage: ""
+    driverOptions: ""
+  podAdmissionPolicy:
+    enabled: true
+
 openvpn:
   enabled: false
 
@@ -12,3 +26,25 @@ wireguard:
   image: ghcr.io/tonitert/ad-infra-k3s/ataka-wireguard:latest
   secretName: ataka-wireguard-config
   configKey: wg0.conf
+  routeCidrs:
+    - 10.99.0.2/32
+  gateway:
+    enabled: true
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-wireguard:latest
+  routeAgent:
+    enabled: true
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-route-agent:latest
+  routeTable: "200"
+  routeMark: "0x51"
+  routePrefBase: "12000"
+  vpnRouteLabelKey: ataka.ad.tertsonen.xyz/vpn-route
+  vpnRouteLabelValue: "true"
+
+registry:
+  enabled: true
+  image: registry:2
+  host: ataka-registry.local
+  pushHost: ataka-registry:5000
+  nodePort: 30500
+  storage: 10Gi
+  storageClassName: longhorn

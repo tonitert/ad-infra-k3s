@@ -1,9 +1,7 @@
 import asyncio
 
-from aiodocker import Docker
-
 from ataka.common import queue, database
-from .exploits import Exploits
+from .backends import create_backend
 from .jobs import Jobs
 
 
@@ -12,17 +10,14 @@ async def main():
     await queue.connect()
     await database.connect()
 
-    docker = Docker()
+    backend = create_backend()
+    jobs = Jobs(backend)
 
-    # load ctf-specific code
-    exploits = Exploits(docker)
-    jobs = Jobs(docker, exploits)
-
-    poll_task = jobs.poll_and_run_jobs()
-
-    await asyncio.gather(poll_task)
-
-    await docker.close()
+    try:
+        poll_task = jobs.poll_and_run_jobs()
+        await asyncio.gather(poll_task)
+    finally:
+        await backend.close()
 
 
 asyncio.run(main())

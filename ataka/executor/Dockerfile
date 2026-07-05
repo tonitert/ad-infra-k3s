@@ -1,7 +1,7 @@
 FROM docker:28.4.0
 LABEL org.opencontainers.image.source="https://github.com/tonitert/ad-infra-k3s"
 
-RUN apk add --no-cache python3 python3-dev py3-pip git build-base
+RUN apk add --no-cache python3 python3-dev py3-pip git build-base docker-cli-buildx
 
 RUN pip install --break-system-packages --no-cache-dir --upgrade pip
 

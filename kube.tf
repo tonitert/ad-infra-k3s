@@ -641,6 +641,17 @@ module "kube-hetzner" {
           password: password
   EOT */
 
+  k3s_registries = <<-EOT
+    mirrors:
+      ataka-registry.local:
+        endpoint:
+          - "http://127.0.0.1:30500"
+    configs:
+      ataka-registry.local:
+        tls:
+          insecure_skip_verify: true
+  EOT
+
   # Additional environment variables for the host OS on which k3s runs. See for example https://docs.k3s.io/advanced#configuring-an-http-proxy .
   # additional_k3s_environment = {
   #   "CONTAINERD_HTTP_PROXY" : "http://your.proxy:port",

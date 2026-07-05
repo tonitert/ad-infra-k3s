@@ -1,4 +1,8 @@
+{{- $executor := .Values.executor | default dict -}}
+{{- $backend := get $executor "backend" | default "kubernetes" -}}
+{{- $buildkit := get $executor "buildkit" | default dict -}}
 {{- $wireguard := .Values.wireguard | default dict -}}
+{{- $registry := .Values.registry | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,7 +16,7 @@ metadata:
     io.kompose.service: executor
   name: executor
 spec:
-  replicas: 1
+  replicas: {{ get $executor "replicas" | default 1 }}
   selector:
     matchLabels:
       io.kompose.service: executor
@@ -29,7 +33,12 @@ spec:
       labels:
         io.kompose.network/ataka-ataka: "true"
         io.kompose.service: executor
+{{- if and (eq $backend "dind") (get $wireguard "enabled" | default false) }}
+        {{ get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route" }}: {{ get $wireguard "vpnRouteLabelValue" | default "true" | quote }}
+{{- end }}
     spec:
+      serviceAccountName: {{ get $executor "serviceAccountName" | default "ataka-executor" }}
+{{- if eq $backend "dind" }}
       initContainers:
         - image: docker:28.4.0-dind
           name: dind
@@ -53,53 +62,55 @@ spec:
               name: persists
           resources:
             requests:
-              cpu: 600m
-              memory: 1000Mi
-      containers:
-{{- if (get $wireguard "enabled" | default false) }}
-        - image: {{ get $wireguard "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-wireguard:latest" }}
-          name: ataka-wireguard
-          securityContext:
-            capabilities:
-              add:
-                - NET_ADMIN
-            runAsGroup: 0
-            runAsUser: 0
-          volumeMounts:
-            - mountPath: /etc/wireguard/wg0.conf
-              name: ataka-wireguard-config
-              readOnly: true
-              subPath: {{ get $wireguard "configKey" | default "wg0.conf" }}
-            - mountPath: /dev/net/tun
-              name: dev-net-tun
-          readinessProbe:
-            exec:
-              command:
-                - wg
-                - show
-                - wg0
-            periodSeconds: 5
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
+              cpu: 100m
+              memory: 200Mi
 {{- end }}
+      containers:
         - envFrom:
             - secretRef:
                 name: ataka-env-secret
-          env: 
+          env:
+            - name: EXECUTOR_BACKEND
+              value: {{ $backend | quote }}
+{{- if eq $backend "dind" }}
             - name: DOCKER_HOST
               value: tcp://localhost:2375
-          image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
+{{- else }}
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: EXECUTOR_SERVICE_ACCOUNT
+              value: {{ get $executor "serviceAccountName" | default "ataka-executor" | quote }}
+            - name: BUILDKIT_BUILDER_NAME
+              value: {{ get $buildkit "builderName" | default "ataka-buildkit" | quote }}
+            - name: BUILDKIT_IMAGE
+              value: {{ get $buildkit "image" | default "moby/buildkit:buildx-stable-1" | quote }}
+            - name: BUILDKIT_REPLICAS
+              value: {{ get $buildkit "replicas" | default 1 | quote }}
+            - name: BUILDKIT_STORAGE
+              value: {{ if hasKey $buildkit "storage" }}{{ get $buildkit "storage" | quote }}{{ else }}{{ "20Gi" | quote }}{{ end }}
+            - name: BUILDKIT_DRIVER_OPTIONS
+              value: {{ get $buildkit "driverOptions" | default "" | quote }}
+            - name: EXPLOIT_REGISTRY_PULL
+              value: {{ get $registry "host" | default "ataka-registry.local" | quote }}
+            - name: EXPLOIT_REGISTRY_PUSH
+              value: {{ get $registry "pushHost" | default "ataka-registry:5000" | quote }}
+            - name: VPN_ROUTE_LABEL_KEY
+              value: {{ get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route" | quote }}
+            - name: VPN_ROUTE_LABEL_VALUE
+              value: {{ get $wireguard "vpnRouteLabelValue" | default "true" | quote }}
+{{- end }}
+          image: {{ get $executor "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest" }}
+          imagePullPolicy: Always
           name: executor
           command:
             - sh
             - -c
             - |
               mkdir -p /data/shared/exploits /data/persist
+{{- if eq $backend "dind" }}
               until docker version >/dev/null 2>&1; do sleep 1; done
-{{- if (get $wireguard "enabled" | default false) }}
-              until [ -e /sys/class/net/wg0 ]; do sleep 1; done
 {{- end }}
               exec sh /ataka/common/delayed_start.sh -- python -m ataka.executor
           securityContext:
@@ -128,13 +139,3 @@ spec:
         - name: persists
           persistentVolumeClaim:
             claimName: persists
-{{- if (get $wireguard "enabled" | default false) }}
-        - name: ataka-wireguard-config
-          secret:
-            secretName: {{ get $wireguard "secretName" | default "ataka-wireguard-config" }}
-        - name: dev-net-tun
-          hostPath:
-            path: /dev/net/tun
-            type: CharDevice
-{{- end }}
-      

@@ -1,18 +1,16 @@
 import asyncio
-import math
 import os
 import time
 import traceback
 from datetime import datetime
 from typing import Optional
 
-from aiodocker import DockerError
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
 
 from ataka.common import database
 from ataka.common.database.models import Job, Execution, Exploit
-from ataka.common.queue import get_channel, JobQueue, JobCancelQueue, JobAction, OutputQueue, OutputMessage
+from ataka.common.queue import get_channel, JobQueue, JobCancelQueue, JobAction
 from .localdata import *
 
 
@@ -29,9 +27,8 @@ TERMINAL_STATUSES = {
 
 
 class Jobs:
-    def __init__(self, docker, exploits):
-        self._docker = docker
-        self._exploits = exploits
+    def __init__(self, backend):
+        self._backend = backend
         self._jobs = {}
         self._job_executions = {}
 
@@ -53,7 +50,7 @@ class Jobs:
                 await raw_message.ack()
                 continue
 
-            job_execution = JobExecution(self._docker, self._exploits, channel, job_message.job_id)
+            job_execution = JobExecution(self._backend, channel, job_message.job_id)
             task = asyncio.create_task(job_execution.run())
             self._jobs[job_message.job_id] = task
             self._job_executions[job_message.job_id] = job_execution
@@ -92,13 +89,10 @@ class Jobs:
 
 
 class JobExecution:
-    def __init__(self, docker, exploits, channel, job_id: int):
+    def __init__(self, backend, channel, job_id: int):
         self.id = job_id
-        self._docker = docker
-        self._exploits = exploits
+        self._backend = backend
         self._channel = channel
-        self._data_store = os.environ["DATA_STORE"]
-        self._container_ref = None
 
     async def run(self):
         job = await self.fetch_job_from_database()
@@ -107,48 +101,9 @@ class JobExecution:
 
         exploit = job.exploit
 
-        persist_dir = f"/data/persist/{exploit.docker_name}"
-        host_persist_dir = f"{self._data_store}/persist/{exploit.docker_name}"
-        host_shared_dir = f"{self._data_store}/shared/exploits"
-
         try:
-            os.makedirs(persist_dir, exist_ok=True)
-            container_ref = await self._docker.containers.create_or_replace(
-                name=f"ataka-exploit-{exploit.docker_name}",
-                config={
-                    "Image": exploit.docker_id,
-                    "Cmd": ["sleep", str(math.floor(job.timeout - time.time()))],
-                    "AttachStdin": False,
-                    "AttachStdout": False,
-                    "AttachStderr": False,
-                    "Tty": False,
-                    "OpenStdin": False,
-                    "StopSignal": "SIGKILL",
-                    "HostConfig": {
-                        "Mounts": [
-                            {
-                                "Type": "bind",
-                                "Source": host_persist_dir,
-                                "Target": "/persist",
-                            },
-                            {
-                                "Type": "bind",
-                                "Source": host_shared_dir,
-                                "Target": "/shared",
-                            }
-                        ],
-                        "CapAdd": ["NET_RAW"],
-                        # "NetworkMode": "container:ataka-exploit",
-                        "CpusetCpus": os.environ.get('EXPLOIT_CPUSET', ''),
-                    },
-                },
-            )
-            self._container_ref = container_ref
-
-            await container_ref.start()
-        except DockerError as exception:
-            print(f"Got docker error for exploit {exploit.id} (service {exploit.service}) by {exploit.author}")
-            print(traceback.format_exception(exception))
+            results = await self._backend.run_job(self.id, job, self._channel)
+        except Exception as exception:
             for e in job.executions:
                 e.status = JobExecutionStatus.FAILED
                 e.stderr = str(exception)
@@ -156,20 +111,7 @@ class JobExecution:
             raise exception
 
         try:
-            execute_tasks = [self.docker_execute(container_ref, e) for e in job.executions]
-
-            print(f"Starting {len(execute_tasks)} tasks for exploit {exploit.id} (service {exploit.service}) by {exploit.author}")
-
-            # Execute all the exploits
-            results = await asyncio.gather(*execute_tasks)
-
-            # try:
-            #    os.rmdir(persist_dir)
-            # except (FileNotFoundError, OSError):
-            #    pass
-
             await self.submit_to_database(results)
-            # TODO: send to ctfconfig
             return True
         except asyncio.CancelledError:
             return await self.cancel()
@@ -194,7 +136,7 @@ class JobExecution:
                 await session.commit()
                 return None
 
-            local_exploit = await self._exploits.ensure_exploit(job.exploit)
+            local_exploit = await self._backend.ensure_exploit(job.exploit)
 
             job.timeout = datetime.fromtimestamp(time.time() + time_left)
             if local_exploit.status is not LocalExploitStatus.FINISHED:
@@ -220,7 +162,7 @@ class JobExecution:
             return LocalJob(local_exploit, job.timeout.timestamp(), local_executions)
 
     async def cancel(self):
-        await self.cleanup_container()
+        await self._backend.cancel_job(self.id)
         async with database.get_session() as session:
             get_job = select(Job).where(Job.id == self.id).options(selectinload(Job.executions))
             job = (await session.execute(get_job)).scalar_one()
@@ -233,20 +175,6 @@ class JobExecution:
 
             await session.commit()
         return True
-
-    async def cleanup_container(self):
-        if self._container_ref is None:
-            return
-
-        try:
-            await self._container_ref.kill()
-        except DockerError:
-            pass
-
-        try:
-            await self._container_ref.delete(force=True)
-        except DockerError:
-            pass
 
     async def submit_to_database(self, results: [LocalExecution]):
         local_executions = {e.database_id: e for e in results}
@@ -273,45 +201,3 @@ class JobExecution:
                 execution.stderr = local_execution.stderr
 
             await session.commit()
-
-    async def docker_execute(self, container_ref, execution: LocalExecution) -> LocalExecution:
-        async def exec_in_container_and_poll_output():
-            try:
-                exec_ref = await container_ref.exec(cmd=execution.exploit.docker_cmd, workdir="/exploit", tty=False,
-                                                    environment={
-                                                        "ATAKA_CENTRAL_EXECUTION": "TRUE",
-                                                        "TARGET_IP": execution.target.ip,
-                                                        "TARGET_EXTRA": execution.target.extra,
-                                                        "ATAKA_EXPLOIT_ID": execution.exploit.id,
-                                                    })
-                async with exec_ref.start(detach=False) as stream:
-                    while True:
-                        message = await stream.read_out()
-                        if message is None:
-                            break
-
-                        yield message[0], message[1].decode()
-            except DockerError as e:
-                print(f"DOCKER EXECUTION ERROR for {execution.exploit.id} (service {execution.exploit.service}) " \
-                      f"by {execution.exploit.author} against target {execution.target.ip}\n" \
-                      f"{e.message}")
-                msg = f"DOCKER EXECUTION ERROR: {e.message}"
-                execution.status = JobExecutionStatus.FAILED
-                execution.stderr += msg
-                yield 2, msg
-
-
-        output_queue = await OutputQueue.get(self._channel)
-
-        async for (stream, output) in exec_in_container_and_poll_output():
-            # collect output
-            match stream:
-                case 1:
-                    execution.stdout += output
-                case 2:
-                    execution.stderr += output
-
-            await output_queue.send_message(OutputMessage(execution.database_id, stream == 1, output))
-        if execution.status in [JobExecutionStatus.QUEUED, JobExecutionStatus.RUNNING]:
-            execution.status = JobExecutionStatus.FINISHED
-        return execution

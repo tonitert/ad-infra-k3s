@@ -1,1 +1,2 @@
 aiodocker==0.21.0
+kubernetes==30.1.0
