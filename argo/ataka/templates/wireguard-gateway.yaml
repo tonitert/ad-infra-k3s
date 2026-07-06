@@ -2,6 +2,8 @@
 {{- $gateway := get $wireguard "gateway" | default dict -}}
 {{- $agent := get $wireguard "routeAgent" | default dict -}}
 {{- $routeCidrs := get $wireguard "routeCidrs" | default (list "10.99.0.2/32") -}}
+{{- $autoscaledNodes := .Values.autoscaledNodes | default dict -}}
+{{- $autoscaledToleration := get $autoscaledNodes "toleration" | default dict -}}
 {{- if and (get $wireguard "enabled" | default false) (get $gateway "enabled" | default false) }}
 apiVersion: apps/v1
 kind: Deployment
@@ -129,6 +131,13 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: ataka-route-agent
+{{- if get $autoscaledToleration "key" }}
+      tolerations:
+        - key: {{ get $autoscaledToleration "key" | quote }}
+          operator: Equal
+          value: {{ get $autoscaledToleration "value" | default "" | quote }}
+          effect: {{ get $autoscaledToleration "effect" | default "NoSchedule" | quote }}
+{{- end }}
       containers:
         - name: route-agent
           image: {{ get $agent "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-route-agent:latest" }}

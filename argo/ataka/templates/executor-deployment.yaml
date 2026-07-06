@@ -3,6 +3,8 @@
 {{- $buildkit := get $executor "buildkit" | default dict -}}
 {{- $wireguard := .Values.wireguard | default dict -}}
 {{- $registry := .Values.registry | default dict -}}
+{{- $autoscaledNodes := .Values.autoscaledNodes | default dict -}}
+{{- $autoscaledToleration := get $autoscaledNodes "toleration" | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -100,6 +102,12 @@ spec:
               value: {{ get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route" | quote }}
             - name: VPN_ROUTE_LABEL_VALUE
               value: {{ get $wireguard "vpnRouteLabelValue" | default "true" | quote }}
+            - name: AUTOSCALED_TOLERATION_KEY
+              value: {{ get $autoscaledToleration "key" | default "" | quote }}
+            - name: AUTOSCALED_TOLERATION_VALUE
+              value: {{ get $autoscaledToleration "value" | default "" | quote }}
+            - name: AUTOSCALED_TOLERATION_EFFECT
+              value: {{ get $autoscaledToleration "effect" | default "NoSchedule" | quote }}
 {{- end }}
           image: {{ get $executor "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest" }}
           imagePullPolicy: Always

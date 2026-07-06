@@ -213,6 +213,9 @@ class KubernetesSettings:
     image_pull_policy: str
     vpn_label_key: str
     vpn_label_value: str
+    autoscaled_toleration_key: str
+    autoscaled_toleration_value: str
+    autoscaled_toleration_effect: str
 
     @classmethod
     def from_env(cls):
@@ -236,6 +239,9 @@ class KubernetesSettings:
             image_pull_policy=os.environ.get("EXPLOIT_IMAGE_PULL_POLICY", "IfNotPresent"),
             vpn_label_key=os.environ.get("VPN_ROUTE_LABEL_KEY", "ataka.ad.tertsonen.xyz/vpn-route"),
             vpn_label_value=os.environ.get("VPN_ROUTE_LABEL_VALUE", "true"),
+            autoscaled_toleration_key=os.environ.get("AUTOSCALED_TOLERATION_KEY", ""),
+            autoscaled_toleration_value=os.environ.get("AUTOSCALED_TOLERATION_VALUE", ""),
+            autoscaled_toleration_effect=os.environ.get("AUTOSCALED_TOLERATION_EFFECT", "NoSchedule"),
         )
 
 
@@ -448,12 +454,23 @@ class KubernetesExecutorBackend(ExecutorBackend):
             "ataka.ad.tertsonen.xyz/exploit-id": _k8s_name(execution.exploit.id, 48),
             self.settings.vpn_label_key: self.settings.vpn_label_value,
         }
+        tolerations = []
+        if self.settings.autoscaled_toleration_key:
+            tolerations.append(
+                client.V1Toleration(
+                    key=self.settings.autoscaled_toleration_key,
+                    operator="Equal",
+                    value=self.settings.autoscaled_toleration_value,
+                    effect=self.settings.autoscaled_toleration_effect,
+                )
+            )
         return client.V1Pod(
             metadata=client.V1ObjectMeta(name=pod_name, labels=labels),
             spec=client.V1PodSpec(
                 restart_policy="Never",
                 service_account_name=self.settings.service_account,
                 active_deadline_seconds=timeout_seconds,
+                tolerations=tolerations,
                 containers=[
                     client.V1Container(
                         name="exploit",

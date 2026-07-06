@@ -296,6 +296,7 @@ class FakeKubernetesClient:
     V1Pod = FakeKubernetesObject
     V1PodSpec = FakeKubernetesObject
     V1SecurityContext = FakeKubernetesObject
+    V1Toleration = FakeKubernetesObject
     V1Volume = FakeKubernetesObject
     V1VolumeMount = FakeKubernetesObject
 
@@ -318,6 +319,9 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
             image_pull_policy="IfNotPresent",
             vpn_label_key="ataka.ad.tertsonen.xyz/vpn-route",
             vpn_label_value="true",
+            autoscaled_toleration_key="ataka.ad.tertsonen.xyz/autoscaled",
+            autoscaled_toleration_value="true",
+            autoscaled_toleration_effect="NoSchedule",
         )
         return executor_backends.KubernetesExecutorBackend(
             settings=settings,
@@ -346,6 +350,10 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(container.image, "ataka-registry.local/ataka-exploit/demo:abc")
         self.assertEqual(container.security_context.capabilities.add, ["NET_RAW"])
         self.assertIn(("TARGET_IP", "10.99.0.2"), [(env.name, env.value) for env in container.env])
+        self.assertEqual(len(pod.spec.tolerations), 1)
+        self.assertEqual(pod.spec.tolerations[0].key, "ataka.ad.tertsonen.xyz/autoscaled")
+        self.assertEqual(pod.spec.tolerations[0].value, "true")
+        self.assertEqual(pod.spec.tolerations[0].effect, "NoSchedule")
 
     async def test_execution_timeout_maps_to_timeout_status(self):
         backend = self.make_backend()

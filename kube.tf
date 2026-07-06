@@ -320,12 +320,20 @@ module "kube-hetzner" {
   autoscaler_nodepools = [
     {
       name        = "autoscaled-small"
-      server_type = "cx23"
+      server_type = "cpx32"
       location    = "hel1"
       min_nodes   = 0
       max_nodes   = 2
-      labels      = {}
-      taints      = []
+      labels = {
+        "ataka.ad.tertsonen.xyz/autoscaled" = "true"
+      }
+      taints = [
+        {
+          key    = "ataka.ad.tertsonen.xyz/autoscaled"
+          value  = "true"
+          effect = "NoSchedule"
+        }
+      ]
       # kubelet_args = ["kube-reserved=cpu=250m,memory=1500Mi,ephemeral-storage=1Gi", "system-reserved=cpu=250m,memory=300Mi"]
     }
   ]
@@ -1049,6 +1057,8 @@ controller:
   # Longhorn, all Longhorn helm values can be found at https://github.com/longhorn/longhorn/blob/master/chart/values.yaml
   # The following is an example, please note that the current indentation inside the EOT is important.
   longhorn_values = <<EOT
+defaultSettings:
+  kubernetesClusterAutoscalerEnabled: true
 persistence:
   defaultFsType: ext4
   defaultClassReplicaCount: 1

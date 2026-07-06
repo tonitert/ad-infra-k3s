@@ -18,6 +18,12 @@ executor:
   podAdmissionPolicy:
     enabled: true
 
+autoscaledNodes:
+  toleration:
+    key: ataka.ad.tertsonen.xyz/autoscaled
+    value: "true"
+    effect: NoSchedule
+
 openvpn:
   enabled: false
 
