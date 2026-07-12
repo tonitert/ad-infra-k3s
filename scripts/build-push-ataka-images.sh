@@ -9,6 +9,7 @@ images=(
   "ataka-cli:ataka/cli/Dockerfile"
   "ataka-ctfcode:ataka/ctfcode/Dockerfile"
   "ataka-executor:ataka/executor/Dockerfile"
+  "ataka-openvpn:ataka/openvpn/Dockerfile"
   "ataka-wireguard:ataka/wireguard/Dockerfile"
   "ataka-route-agent:ataka/route-agent/Dockerfile"
 )

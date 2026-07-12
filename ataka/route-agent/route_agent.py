@@ -10,6 +10,7 @@ NAMESPACE = os.environ.get("POD_NAMESPACE", "ataka")
 NODE_NAME = os.environ["NODE_NAME"]
 LABEL_SELECTOR = os.environ.get("VPN_LABEL_SELECTOR", "ataka.ad.tertsonen.xyz/vpn-route=true")
 GATEWAY_SELECTOR = os.environ.get("GATEWAY_LABEL_SELECTOR", "app.kubernetes.io/name=ataka-wireguard-gateway")
+VPN_INTERFACE = os.environ.get("VPN_INTERFACE", "wg0")
 ROUTE_TABLE = os.environ.get("ROUTE_TABLE", "200")
 ROUTE_CIDRS = os.environ.get("ROUTE_CIDRS", "10.99.0.2/32").split()
 ROUTE_MARK = os.environ.get("ROUTE_MARK", "0x51")
@@ -138,8 +139,8 @@ def install_routes(v1, all_node_ips, all_gateway_ips, all_gateway_nodes):
         self_ip = first_for_family(all_node_ips, family)
         if not gateway:
             continue
-        if self_ip and gateway == self_ip and run("ip", "link", "show", "wg0").returncode == 0:
-            run("ip", f"-{family}", "route", "replace", cidr, "dev", "wg0", "table", ROUTE_TABLE)
+        if self_ip and gateway == self_ip and run("ip", "link", "show", VPN_INTERFACE).returncode == 0:
+            run("ip", f"-{family}", "route", "replace", cidr, "dev", VPN_INTERFACE, "table", ROUTE_TABLE)
         else:
             gateway_node = first_for_family(
                 [

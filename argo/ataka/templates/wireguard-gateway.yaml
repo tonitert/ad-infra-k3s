@@ -1,10 +1,26 @@
 {{- $wireguard := .Values.wireguard | default dict -}}
 {{- $gateway := get $wireguard "gateway" | default dict -}}
 {{- $agent := get $wireguard "routeAgent" | default dict -}}
-{{- $routeCidrs := get $wireguard "routeCidrs" | default (list "10.99.0.2/32") -}}
+{{- $openvpn := .Values.openvpn | default dict -}}
+{{- $openvpnGateway := get $openvpn "gateway" | default dict -}}
+{{- $openvpnAgent := get $openvpn "routeAgent" | default dict -}}
+{{- $wireguardGatewayEnabled := and (get $wireguard "enabled" | default false) (get $gateway "enabled" | default false) -}}
+{{- $openvpnGatewayEnabled := and (get $openvpn "enabled" | default false) (get $openvpnGateway "enabled" | default false) -}}
+{{- if and $wireguardGatewayEnabled $openvpnGatewayEnabled -}}
+{{- fail "Only one Ataka VPN gateway can be enabled at a time. Disable either wireguard.gateway.enabled or openvpn.gateway.enabled." -}}
+{{- end -}}
+{{- $routeCidrs := ternary (get $openvpn "routeCidrs" | default (list "10.99.0.2/32")) (get $wireguard "routeCidrs" | default (list "10.99.0.2/32")) $openvpnGatewayEnabled -}}
+{{- $activeAgent := ternary $openvpnAgent $agent $openvpnGatewayEnabled -}}
+{{- $activeRouteTable := ternary (get $openvpn "routeTable" | default "201") (get $wireguard "routeTable" | default "51820") $openvpnGatewayEnabled -}}
+{{- $activeRouteMark := ternary (get $openvpn "routeMark" | default "0x52") (get $wireguard "routeMark" | default "0x51") $openvpnGatewayEnabled -}}
+{{- $activeRoutePrefBase := ternary (get $openvpn "routePrefBase" | default "12100") (get $wireguard "routePrefBase" | default "12000") $openvpnGatewayEnabled -}}
+{{- $activeVpnLabelKey := ternary (get $openvpn "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route") (get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route") $openvpnGatewayEnabled -}}
+{{- $activeVpnLabelValue := ternary (get $openvpn "vpnRouteLabelValue" | default "true") (get $wireguard "vpnRouteLabelValue" | default "true") $openvpnGatewayEnabled -}}
+{{- $activeGatewaySelector := ternary "app.kubernetes.io/name=ataka-openvpn-gateway" "app.kubernetes.io/name=ataka-wireguard-gateway" $openvpnGatewayEnabled -}}
+{{- $activeVpnInterface := ternary (get $openvpn "device" | default "tun0") "wg0" $openvpnGatewayEnabled -}}
 {{- $autoscaledNodes := .Values.autoscaledNodes | default dict -}}
 {{- $autoscaledToleration := get $autoscaledNodes "toleration" | default dict -}}
-{{- if and (get $wireguard "enabled" | default false) (get $gateway "enabled" | default false) }}
+{{- if $wireguardGatewayEnabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -63,7 +79,69 @@ spec:
             path: /dev/net/tun
             type: CharDevice
 {{- end }}
-{{- if and (get $wireguard "enabled" | default false) (get $agent "enabled" | default false) }}
+{{- if $openvpnGatewayEnabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ataka-openvpn-gateway
+  labels:
+    app.kubernetes.io/name: ataka-openvpn-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ataka-openvpn-gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ataka-openvpn-gateway
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - image: {{ get $openvpnGateway "image" | default (get $openvpn "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-openvpn:latest") }}
+          name: openvpn
+          env:
+            - name: OPENVPN_CONFIG
+              value: /vpn/{{ get $openvpn "configKey" | default "vpn.conf" }}
+            - name: OPENVPN_DEV
+              value: {{ get $openvpn "device" | default "tun0" | quote }}
+            - name: OPENVPN_ROUTE_CIDRS
+              value: {{ join " " $routeCidrs | quote }}
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+          volumeMounts:
+            - mountPath: /vpn
+              name: openvpn-config
+              readOnly: true
+            - mountPath: /dev/net/tun
+              name: dev-net-tun
+          readinessProbe:
+            exec:
+              command:
+                - ip
+                - link
+                - show
+                - {{ get $openvpn "device" | default "tun0" | quote }}
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+      volumes:
+        - name: openvpn-config
+          secret:
+            secretName: {{ get $openvpn "secretName" | default "openvpn-config" }}
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+{{- end }}
+{{- if or (and $wireguardGatewayEnabled (get $agent "enabled" | default false)) (and $openvpnGatewayEnabled (get $openvpnAgent "enabled" | default false)) }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -140,7 +218,7 @@ spec:
 {{- end }}
       containers:
         - name: route-agent
-          image: {{ get $agent "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-route-agent:latest" }}
+          image: {{ get $activeAgent "image" | default "ghcr.io/tonitert/ad-infra-k3s/ataka-route-agent:latest" }}
           securityContext:
             privileged: true
             capabilities:
@@ -158,13 +236,17 @@ spec:
             - name: ROUTE_CIDRS
               value: {{ join " " $routeCidrs | quote }}
             - name: ROUTE_TABLE
-              value: {{ get $wireguard "routeTable" | default "51820" | quote }}
+              value: {{ $activeRouteTable | quote }}
             - name: ROUTE_MARK
-              value: {{ get $wireguard "routeMark" | default "0x51" | quote }}
+              value: {{ $activeRouteMark | quote }}
             - name: ROUTE_PREF_BASE
-              value: {{ get $wireguard "routePrefBase" | default "12000" | quote }}
+              value: {{ $activeRoutePrefBase | quote }}
+            - name: GATEWAY_LABEL_SELECTOR
+              value: {{ $activeGatewaySelector | quote }}
+            - name: VPN_INTERFACE
+              value: {{ $activeVpnInterface | quote }}
             - name: VPN_LABEL_SELECTOR
-              value: {{ printf "%s=%s" (get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route") (get $wireguard "vpnRouteLabelValue" | default "true") | quote }}
+              value: {{ printf "%s=%s" $activeVpnLabelKey $activeVpnLabelValue | quote }}
             - name: ENABLE_DIND_MARKING
               value: {{ ternary "true" "false" (eq (.Values.executor.backend | default "kubernetes") "dind") | quote }}
           resources:

@@ -6,7 +6,8 @@ The configuration must be production ready and applyable from scratch from the f
 You have access to a development kubernetes cluster. The kubeconfig is in k3s_kubeconfig.yaml. To get the cluster api reachable, you need to connect to ctfnote.ad.tertsonen.xyz:6443 first if it is not responding. The cluster might time out sometimes, retry a couple of times when this happens.
 Do not use configmaps for source code. If a configmap has a code file that is explictly configuration, that is fine. Ataka and tulip can be modified and their containers pushed to the github repo. Prompt the user to do this when you modify the service sources.
 HTTP traffic to services is proxied through traefik.
-Use opentofu commands instead of terraform.
+Use opentofu commands (tofu --version etc.) instead of terraform.
+When building docker containers, use host networking.
 
 # Services
 

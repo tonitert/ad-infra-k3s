@@ -1,6 +1,7 @@
 # Ataka OpenVPN Secret
 
-Ataka mounts the `openvpn-config` secret into the `ctfcode` pod at `/vpn`.
+Ataka can use the `openvpn-config` secret either as the legacy `ctfcode`
+sidecar config or as the Ataka VPN gateway config.
 Generate it through the repository-wide secrets chart:
 
 ```bash
@@ -10,8 +11,7 @@ $EDITOR secrets/chart/values.yaml
 ```
 
 Set `ataka.openvpnConfig` to the full contents of the OpenVPN client config.
-The chart stores it as `vpn.conf`, matching `VPN_FILES=vpn.conf` in the Ataka
-deployment.
+The secrets chart stores it as `vpn.conf`.
 
 If the config references extra files, add them under `ataka.openvpnFiles`:
 
@@ -37,3 +37,22 @@ ataka:
       ...
       -----END PRIVATE KEY-----
 ```
+
+To use OpenVPN as the Ataka gateway, enable only the OpenVPN gateway in
+`argo/ataka/values.yaml`:
+
+```yaml
+openvpn:
+  enabled: true
+  routeCidrs:
+    - <ctf-network-cidr>
+  gateway:
+    enabled: true
+
+wireguard:
+  enabled: false
+```
+
+Only one Ataka VPN gateway can be enabled at a time. Keep WireGuard enabled for
+WireGuard competitions, or disable it and enable the OpenVPN gateway for
+OpenVPN competitions.

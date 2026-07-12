@@ -5,6 +5,7 @@ namespace="${POD_NAMESPACE:-ataka}"
 node_name="${NODE_NAME:?NODE_NAME is required}"
 label_selector="${VPN_LABEL_SELECTOR:-ataka.ad.tertsonen.xyz/vpn-route=true}"
 gateway_selector="${GATEWAY_LABEL_SELECTOR:-app.kubernetes.io/name=ataka-wireguard-gateway}"
+vpn_interface="${VPN_INTERFACE:-wg0}"
 route_table="${ROUTE_TABLE:-200}"
 route_cidrs="${ROUTE_CIDRS:-10.99.0.2/32}"
 mark="${ROUTE_MARK:-0x51}"
@@ -118,8 +119,8 @@ install_routes() {
     self="$(printf '%s\n' "$all_node_ips" | addr_for_family "$family" || true)"
     [ -n "$gw" ] || continue
 
-    if [ -n "$self" ] && [ "$gw" = "$self" ] && ip link show wg0 >/dev/null 2>&1; then
-      ip "-$family" route replace "$cidr" dev wg0 table "$route_table"
+    if [ -n "$self" ] && [ "$gw" = "$self" ] && ip link show "$vpn_interface" >/dev/null 2>&1; then
+      ip "-$family" route replace "$cidr" dev "$vpn_interface" table "$route_table"
     else
       gateway_pod_cidr_ip="$(printf '%s\n' "$all_gateway_pod_cidr_ips" | addr_for_family "$family" || true)"
       if [ -n "$gateway_pod_cidr_ip" ]; then

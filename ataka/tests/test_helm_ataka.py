@@ -74,6 +74,54 @@ class AtakaHelmTemplateTests(unittest.TestCase):
 
         self.assertIn('value: "10.99.0.2/32 fd00::2/128"', rendered)
 
+    def test_openvpn_gateway_reuses_route_agent_without_ctfcode_sidecar(self):
+        rendered = helm_template(
+            "--set",
+            "wireguard.enabled=false",
+            "--set",
+            "openvpn.enabled=true",
+            "--set",
+            "openvpn.gateway.enabled=true",
+            "--set",
+            "openvpn.routeCidrs[0]=10.8.0.0/24",
+        )
+
+        self.assertIn("ataka-openvpn-gateway", rendered)
+        self.assertIn('value: "10.8.0.0/24"', rendered)
+        self.assertIn('value: "app.kubernetes.io/name=ataka-openvpn-gateway"', rendered)
+        self.assertIn('value: "tun0"', rendered)
+        self.assertIn('value: "201"', rendered)
+        self.assertNotIn("name: openvpn-client", rendered)
+        self.assertNotIn("ataka-wireguard-gateway", rendered)
+
+    def test_enabling_both_vpn_gateways_fails(self):
+        if shutil.which("helm") is None:
+            raise unittest.SkipTest("helm is not installed")
+
+        result = subprocess.run(
+            [
+                "helm",
+                "template",
+                "ataka",
+                "argo/ataka",
+                "--namespace",
+                "ataka",
+                "--set",
+                "openvpn.enabled=true",
+                "--set",
+                "openvpn.gateway.enabled=true",
+                "--set",
+                "openvpn.routeCidrs[0]=10.8.0.0/24",
+            ],
+            cwd="/workspace",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Only one Ataka VPN gateway can be enabled at a time", result.stdout)
+
     def test_route_agent_does_not_flush_routes_or_mangle_chain(self):
         script = Path("/workspace/ataka/route-agent/route-agent.sh").read_text()
 

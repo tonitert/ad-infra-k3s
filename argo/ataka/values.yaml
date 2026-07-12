@@ -26,6 +26,21 @@ autoscaledNodes:
 
 openvpn:
   enabled: false
+  image: ghcr.io/tonitert/ad-infra-k3s/ataka-openvpn:latest
+  secretName: openvpn-config
+  configKey: vpn.conf
+  device: tun0
+  routeCidrs: []
+  gateway:
+    enabled: false
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-openvpn:latest
+  routeAgent:
+    enabled: true
+    image: ghcr.io/tonitert/ad-infra-k3s/ataka-route-agent:latest
+  routeTable: "201"
+  routeMark: "0x52"
+  vpnRouteLabelKey: ataka.ad.tertsonen.xyz/vpn-route
+  vpnRouteLabelValue: "true"
 
 wireguard:
   enabled: true

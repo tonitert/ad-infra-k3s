@@ -41,12 +41,14 @@ class FakeCoreV1:
 class RouteAgentTests(unittest.TestCase):
     def setUp(self):
         self.original_route_cidrs = route_agent.ROUTE_CIDRS
+        self.original_vpn_interface = route_agent.VPN_INTERFACE
         self.original_run = route_agent.run
         self.commands = []
         route_agent.ROUTE_CIDRS = ["10.99.0.2/32"]
 
     def tearDown(self):
         route_agent.ROUTE_CIDRS = self.original_route_cidrs
+        route_agent.VPN_INTERFACE = self.original_vpn_interface
         route_agent.run = self.original_run
 
     def fake_run(self, *args, check=False):
@@ -106,6 +108,31 @@ class RouteAgentTests(unittest.TestCase):
 
         self.assertIn(
             ("ip", "-4", "route", "replace", "10.99.0.2/32", "dev", "wg0", "table", "200"),
+            self.commands,
+        )
+
+    def test_gateway_node_routes_vpn_cidr_to_configured_interface(self):
+        route_agent.VPN_INTERFACE = "tun0"
+
+        def fake_run(*args, check=False):
+            self.commands.append(args)
+            if args[:4] == ("ip", "link", "show", "tun0"):
+                return FakeRunResult(returncode=0)
+            if args[:3] == ("ip", "-4", "rule"):
+                return FakeRunResult(stdout="")
+            return FakeRunResult()
+
+        route_agent.run = fake_run
+
+        route_agent.install_routes(
+            FakeCoreV1(),
+            all_node_ips=["10.255.0.101"],
+            all_gateway_ips=["10.255.0.101"],
+            all_gateway_nodes=["k3s-control-plane-hel1-bcf"],
+        )
+
+        self.assertIn(
+            ("ip", "-4", "route", "replace", "10.99.0.2/32", "dev", "tun0", "table", "200"),
             self.commands,
         )
 

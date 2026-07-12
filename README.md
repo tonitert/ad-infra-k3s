@@ -109,8 +109,8 @@ The generated sealed secrets include:
 | `ctfnote-pad-basic-auth` | `ctfnote` | Basic-auth htpasswd entry for HedgeDoc and Tulip routes. |
 | `tulip-basic-auth` | `tulip` | Basic-auth htpasswd entry for Tulip routes. |
 | `ataka-env-secret` | `ataka` | Ataka CTF, PostgreSQL, RabbitMQ, and runtime environment values. |
-| `ataka-wireguard-config` | `ataka` | WireGuard `wg0.conf` used by the Ataka executor sidecar. |
-| `openvpn-config` | `ataka` | OpenVPN `vpn.conf` used by the Ataka CTF code sidecar. |
+| `ataka-wireguard-config` | `ataka` | WireGuard `wg0.conf` used by the Ataka VPN gateway. |
+| `openvpn-config` | `ataka` | OpenVPN `vpn.conf` used by the Ataka OpenVPN gateway or legacy CTF code sidecar. |
 
 Keep the original `basicAuthPassword` somewhere safe. The cluster stores only the htpasswd hash in `ctfnote-pad-basic-auth`, not the plaintext password.
 

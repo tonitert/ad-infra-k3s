@@ -1,5 +1,11 @@
 {{- $openvpn := .Values.openvpn | default dict -}}
 {{- $wireguard := .Values.wireguard | default dict -}}
+{{- $openvpnGateway := get $openvpn "gateway" | default dict -}}
+{{- $openvpnGatewayEnabled := and (get $openvpn "enabled" | default false) (get $openvpnGateway "enabled" | default false) -}}
+{{- $openvpnSidecarEnabled := and (get $openvpn "enabled" | default false) (not $openvpnGatewayEnabled) -}}
+{{- $vpnRouteEnabled := or (get $wireguard "enabled" | default false) $openvpnGatewayEnabled -}}
+{{- $vpnLabelKey := get $wireguard "vpnRouteLabelKey" | default (get $openvpn "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route") -}}
+{{- $vpnLabelValue := get $wireguard "vpnRouteLabelValue" | default (get $openvpn "vpnRouteLabelValue" | default "true") -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,12 +30,12 @@ spec:
       labels:
         io.kompose.network/ataka-ataka: "true"
         io.kompose.service: ctfcode
-{{- if (get $wireguard "enabled" | default false) }}
-        {{ get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route" }}: {{ get $wireguard "vpnRouteLabelValue" | default "true" | quote }}
+{{- if $vpnRouteEnabled }}
+        {{ $vpnLabelKey }}: {{ $vpnLabelValue | quote }}
 {{- end }}
     spec:
       containers:
-{{- if (get $openvpn "enabled" | default false) }}
+{{- if $openvpnSidecarEnabled }}
         # OpenVPN client sidecar container
         - name: openvpn-client
           image: dperson/openvpn-client
@@ -83,7 +89,7 @@ spec:
         - name: shared
           persistentVolumeClaim:
             claimName: shared
-{{- if (get $openvpn "enabled" | default false) }}
+{{- if $openvpnSidecarEnabled }}
         # OpenVPN configuration volume
         - name: openvpn-config
           secret:

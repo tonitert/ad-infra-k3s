@@ -2,6 +2,12 @@
 {{- $backend := get $executor "backend" | default "kubernetes" -}}
 {{- $buildkit := get $executor "buildkit" | default dict -}}
 {{- $wireguard := .Values.wireguard | default dict -}}
+{{- $openvpn := .Values.openvpn | default dict -}}
+{{- $openvpnGateway := get $openvpn "gateway" | default dict -}}
+{{- $openvpnGatewayEnabled := and (get $openvpn "enabled" | default false) (get $openvpnGateway "enabled" | default false) -}}
+{{- $vpnRouteEnabled := or (get $wireguard "enabled" | default false) $openvpnGatewayEnabled -}}
+{{- $vpnLabelKey := get $wireguard "vpnRouteLabelKey" | default (get $openvpn "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route") -}}
+{{- $vpnLabelValue := get $wireguard "vpnRouteLabelValue" | default (get $openvpn "vpnRouteLabelValue" | default "true") -}}
 {{- $registry := .Values.registry | default dict -}}
 {{- $autoscaledNodes := .Values.autoscaledNodes | default dict -}}
 {{- $autoscaledToleration := get $autoscaledNodes "toleration" | default dict -}}
@@ -35,8 +41,8 @@ spec:
       labels:
         io.kompose.network/ataka-ataka: "true"
         io.kompose.service: executor
-{{- if and (eq $backend "dind") (get $wireguard "enabled" | default false) }}
-        {{ get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route" }}: {{ get $wireguard "vpnRouteLabelValue" | default "true" | quote }}
+{{- if and (eq $backend "dind") $vpnRouteEnabled }}
+        {{ $vpnLabelKey }}: {{ $vpnLabelValue | quote }}
 {{- end }}
     spec:
       serviceAccountName: {{ get $executor "serviceAccountName" | default "ataka-executor" }}
@@ -99,9 +105,9 @@ spec:
             - name: EXPLOIT_REGISTRY_PUSH
               value: {{ get $registry "pushHost" | default "ataka-registry:5000" | quote }}
             - name: VPN_ROUTE_LABEL_KEY
-              value: {{ get $wireguard "vpnRouteLabelKey" | default "ataka.ad.tertsonen.xyz/vpn-route" | quote }}
+              value: {{ $vpnLabelKey | quote }}
             - name: VPN_ROUTE_LABEL_VALUE
-              value: {{ get $wireguard "vpnRouteLabelValue" | default "true" | quote }}
+              value: {{ $vpnLabelValue | quote }}
             - name: AUTOSCALED_TOLERATION_KEY
               value: {{ get $autoscaledToleration "key" | default "" | quote }}
             - name: AUTOSCALED_TOLERATION_VALUE
