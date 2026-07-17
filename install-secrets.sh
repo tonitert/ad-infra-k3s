@@ -19,6 +19,11 @@ rendered_secret=$(mktemp)
 render_error=$(mktemp)
 trap 'rm -f "$rendered_secret" "$render_error"' EXIT
 
+helm_args=(template secrets secrets/chart)
+if [ -f client.ovpn ]; then
+    helm_args+=(--set-file ataka.openvpnConfig=client.ovpn)
+fi
+
 for template_file in secrets/chart/templates/*.yaml; do
     if [ -f "$template_file" ]; then
         # Extract filename without path and extension
@@ -27,7 +32,7 @@ for template_file in secrets/chart/templates/*.yaml; do
         
         echo "Processing template: $template_file"
 
-        if ! helm template secrets secrets/chart -s "templates/$(basename "$template_file")" > "$rendered_secret" 2> "$render_error"; then
+        if ! helm "${helm_args[@]}" -s "templates/$(basename "$template_file")" > "$rendered_secret" 2> "$render_error"; then
             if grep -q "could not find template templates/$(basename "$template_file") in chart" "$render_error"; then
                 rm -f "$output_file"
                 echo "- Skipped empty template and removed stale output: $output_file"
