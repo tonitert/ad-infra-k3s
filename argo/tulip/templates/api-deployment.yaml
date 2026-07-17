@@ -21,6 +21,7 @@ spec:
         kompose.cmd: kompose convert -f docker-compose.yaml
         kompose.version: 1.36.0 (ae2a39403)
         org.opencontainers.image.source: https://github.com/tonitert/ad-infra-k3s
+        checksum/tulip-config: {{ include (print $.Template.BasePath "/tulip-configmap.yaml") . | sha256sum }}
       labels:
         io.kompose.service: api
     spec:
@@ -37,16 +38,9 @@ spec:
             - mountPath: /traffic
               name: traffic
               readOnly: true
-            - mountPath: /app/configurations.py
-              name: api-config
-              subPath: configurations.py
-              readOnly: true
       restartPolicy: Always
       volumes:
         - name: traffic
           persistentVolumeClaim:
             claimName: traffic
             readOnly: true
-        - name: api-config
-          configMap:
-            name: api-config

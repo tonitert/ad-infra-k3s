@@ -7,6 +7,7 @@ enowars:
   # ENOWARS attack.json contains the authoritative set of currently valid
   # attack info. The scraper replaces its cache on every round.
   flagLifetime: -1
+  flagIdParser: "enowars"
   attackInfoEndpoint: "https://10.enowars.com/scoreboard/attack.json"
   # Add released service ports here when they are announced. Tulip still
   # captures and displays unlisted traffic through the "other" entry.

@@ -771,9 +771,17 @@ module "kube-hetzner" {
       description     = "Allow ENOWARS OpenVPN"
       direction       = "out"
       protocol        = "udp"
-      port            = "10000-65535"
+      port            = "1-65535"
       source_ips      = []
       destination_ips = ["0.0.0.0/0"]
+    },
+    {
+      description     = "Allow Ataka WireGuard test target"
+      direction       = "out"
+      protocol        = "udp"
+      port            = "51820"
+      source_ips      = []
+      destination_ips = ["77.42.45.155/32"]
     }
   ]
 

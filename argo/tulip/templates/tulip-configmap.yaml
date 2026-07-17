@@ -29,6 +29,7 @@ data:
   FLAGID_SCRAPE: "1"
   FLAGID_SCAN: "1"
   FLAG_LIFETIME: {{ .Values.enowars.flagLifetime | toString | quote }}
+  FLAGID_PARSER: {{ required "enowars.flagIdParser is required" .Values.enowars.flagIdParser | quote }}
   FLAGID_ENDPOINT: {{ required "enowars.attackInfoEndpoint is required" .Values.enowars.attackInfoEndpoint | quote }}
   
   # FLAG_VALIDATOR CONFIGS

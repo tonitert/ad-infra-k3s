@@ -28,6 +28,8 @@ START_TIME = 1784376000  # 2026-07-18T12:00:00Z
 FLAG_REGEX = r"ENO[A-Za-z0-9+/=]{48}", 0
 FLAG_BATCHSIZE = 1000
 FLAG_RATELIMIT = 5
+# Do not submit generated flags to the live EnoFlagSink at pod startup.
+LIVE_SELF_TEST = False
 
 REQUEST_TIMEOUT = (3.05, 10)
 SUBMISSION_TIMEOUT = 5

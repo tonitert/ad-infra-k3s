@@ -43,5 +43,6 @@ nix run ../llm-jail/#codex -- --dangerous --vcpu 6 --mem 8192 --store-disk 30 --
     --allow-domain dl-cdn.alpinelinux.org \
     --allow-domain deb.debian.org \
     --allow-domain security.debian.org \
+    --allow-domain registry.yarnpkg.com \
     -- -c shell_environment_policy.inherit=all \
     -c "shell_environment_policy.set.BASH_ENV=\"$bash_env\""

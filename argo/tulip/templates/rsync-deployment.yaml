@@ -19,9 +19,11 @@ spec:
     spec:
       containers:
         - env:
+            - name: RSYNC_SOURCE
+              value: {{ required "enowars.pcapRsyncSource is required" .Values.enowars.pcapRsyncSource | quote }}
             # Cron task for periodic rsync - this is how eeacms/rsync actually works
             - name: CRON_TASK_1
-              value: "*/2 * * * * flock -n /var/lock/rsync.lock -c \"ssh root@77.42.45.155 'find /pcaps -mmin -30 -type f -printf \\\"%P\\\\n\\\"' | rsync -e 'ssh -o StrictHostKeyChecking=no' -avz --stats --delete --files-from=- root@77.42.45.155:/pcaps/ /traffic/\""
+              value: "*/2 * * * * flock -n /var/lock/rsync.lock -c \"rsync -e 'ssh -o StrictHostKeyChecking=accept-new' -avz --stats --delete \\\"$RSYNC_SOURCE\\\" /traffic/\""
           image: eeacms/rsync:latest
           name: rsync
           # Run in client mode to execute cron tasks
@@ -32,10 +34,6 @@ spec:
               readOnly: false
             - mountPath: /root/.ssh
               name: rsync-keys
-            - mountPath: /usr/local/bin/sync-pcaps
-              name: rsync-scripts
-              subPath: sync-pcaps
-              readOnly: true
           # Add resource limits to prevent excessive resource usage
           resources:
             limits:
@@ -54,7 +52,3 @@ spec:
           persistentVolumeClaim:
             claimName: rsync-keys
             readOnly: false
-        - name: rsync-scripts
-          configMap:
-            name: rsync-scripts
-            defaultMode: 0555

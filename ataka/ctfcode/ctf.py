@@ -1,4 +1,3 @@
-import os
 import time
 from importlib import import_module, reload
 import logging
@@ -147,12 +146,9 @@ class CTF:
             self.get_flag_ratelimit()
             self.get_start_time()
 
-            # Target discovery and flag submission are network operations.  Do
-            # not perform them as a side effect of starting a production pod:
-            # in particular, generating test flags would send invalid flags to
-            # the live ENOWARS flag sink.  They can still be exercised when a
-            # maintainer explicitly enables the live self-test.
-            if os.getenv("CTF_LIVE_SELF_TEST", "false").lower() == "true":
+            # ENOWARS' sink treats startup-generated flags as real submissions.
+            # Other CTF configurations retain the legacy live self-test.
+            if getattr(self._module, "LIVE_SELF_TEST", True):
                 self.get_targets()
 
                 fake_flag_count = min(batchsize, 10)
@@ -161,9 +157,9 @@ class CTF:
                 status_list = self.submit_flags(fake_flags)
                 for flag, status in zip(fake_flags, status_list):
                     logging.info(f"    {flag} -> {status}")
-                logging.info("Live test finished")
+                logging.info("Test finished (if you only see flag submission results, everything is good)")
             else:
-                logging.info("Skipping live target and flag-sink self-test; set CTF_LIVE_SELF_TEST=true to enable it")
+                logging.info("Skipping live self-test for this CTF config")
         except Exception as e:
             logging.error(f"Self-Test FAILED")
             logging.error(traceback.format_exc())

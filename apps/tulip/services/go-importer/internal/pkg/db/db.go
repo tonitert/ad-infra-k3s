@@ -598,13 +598,16 @@ type FlagId struct {
 
 // Query all valid flag ids
 func (db *Database) FlagIdsQuery(lifetime int) ([]FlagId, error) {
-	rows, _ := db.pool.Query(context.Background(), `
-		SELECT *
-		FROM flag_id
-		WHERE time > @time_limit
-	`, pgx.NamedArgs {
-		"time_limit": time.Now().Add(-time.Duration(float64(lifetime) * float64(time.Second))),
-	});
+	query := `SELECT * FROM flag_id`
+	args := pgx.NamedArgs{}
+	if lifetime >= 0 {
+		query += ` WHERE time > @time_limit`
+		args["time_limit"] = time.Now().Add(-time.Duration(lifetime) * time.Second)
+	}
+	rows, err := db.pool.Query(context.Background(), query, args)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	return pgx.CollectRows(rows, pgx.RowToStructByName[FlagId])

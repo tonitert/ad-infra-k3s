@@ -54,6 +54,7 @@ class Enowars10ConfigTests(unittest.TestCase):
         self.assertEqual(self.config.START_TIME, 1784376000)
         self.assertEqual(self.config.ROUND_TIME, 60)
         self.assertEqual(self.config.ATTACK_INFO_URL, "https://10.enowars.com/scoreboard/attack.json")
+        self.assertFalse(self.config.LIVE_SELF_TEST)
 
     def test_attack_info_services_and_extra_are_preserved(self):
         payload = {

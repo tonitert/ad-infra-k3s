@@ -1,90 +1,106 @@
-#!/bin/env python
+#!/usr/bin/env python3
+import importlib.util
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Callable, Mapping
 
 import psycopg_pool
 import requests
 
-DELAY = 5  # DELAY from start of tick
-tick_length = int(os.getenv("TICK_LENGTH", 10 * 1000)) // 1000
-start_date = os.getenv("TICK_START", "2018-06-27T13:00+02:00")
-team_id = os.getenv("TEAM_ID", "10.10.3.1")
-team_id_is_digit = team_id.isdigit()
-team_id_int = int(team_id) if team_id_is_digit else None
-flagid_endpoint = os.getenv("FLAGID_ENDPOINT", "http://localhost:8000/flagids.json")
-flagid_scrape_enabled = os.getenv("FLAGID_SCRAPE", "") != ""
 
-client = None
-db = None
-if flagid_scrape_enabled:
-    print("STARTING FLAGIDS")
-    print("CONFIG:")
-    print("  DELAY: ", DELAY)
-    print("  TICK_LENGTH: ", tick_length)
-    print("  TICK_START: ", start_date)
-    print("  TIMESCALE: ", os.environ.get("TIMESCALE"))
-    print("  TEAM_ID: ", team_id)
-    print("  FLAGID_ENDPOINT: ", flagid_endpoint)
-    db = psycopg_pool.ConnectionPool(os.environ["TIMESCALE"])
-    print("CONNECTION TO MONGO ESTABLISHED", flush=True)
-else:
-    print("FLAGID SCRAPE DISABLED", flush=True)
+DELAY_SECONDS = 5
+REQUEST_TIMEOUT = (3.05, 10)
 
 
-# get leaf nodes of a json data struct
-def get_leaf_nodes(data):
-    if isinstance(data, dict):
-        if team_id in data.keys():
-            yield from get_leaf_nodes(data[team_id])
-        elif team_id_is_digit and team_id_int in data.keys():
-            yield from get_leaf_nodes(data[team_id_int])
-        else:
-            for value in data.values():
-                yield from get_leaf_nodes(value)
-    elif isinstance(data, list):
-        if team_id in data or (team_id_is_digit and team_id_int in data):
-            yield
-        else:
-            for item in data:
-                print(item, end=" ", flush=True)
-                yield from get_leaf_nodes(item)
-    else:
-        # prevent id from being used as Flagids
-        yield data
+def load_parser(name: str) -> Callable[[object, Mapping[str, str]], list[str]]:
+    if not name.isidentifier():
+        raise ValueError("FLAGID_PARSER must be a Python identifier")
+
+    parser_path = Path(__file__).with_name("parsers") / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(f"flagid_parser_{name}", parser_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load flag-ID parser {name!r}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    parser = getattr(module, "extract_flagids", None)
+    if not callable(parser):
+        raise RuntimeError(f"Flag-ID parser {name!r} must define extract_flagids")
+    return parser
 
 
-def update_flagids():
-    assert db is not None
-
-    response = requests.get(flagid_endpoint)
-    rows = [(node,) for node in get_leaf_nodes(response.json()) if node is not None]
-    print("Updating flagids: ", time.time(), f"({len(rows)})", flush=True)
+def update_flagids(
+    db: psycopg_pool.ConnectionPool,
+    endpoint: str,
+    parser: Callable[[object, Mapping[str, str]], list[str]],
+    context: Mapping[str, str],
+) -> int:
+    response = requests.get(endpoint, timeout=REQUEST_TIMEOUT)
+    response.raise_for_status()
+    flagids = parser(response.json(), context)
 
     with db.connection() as conn:
         with conn.cursor() as cur:
-            cur.executemany("INSERT INTO flag_id (content) VALUES (%s)", rows)
-            conn.commit()
+            # Replacing the cache keeps it aligned with the parser's current
+            # validity window and prevents old IDs accumulating.
+            cur.execute("DELETE FROM flag_id")
+            if flagids:
+                cur.executemany(
+                    "INSERT INTO flag_id (content) VALUES (%s)",
+                    [(flagid,) for flagid in flagids],
+                )
+        conn.commit()
+    return len(flagids)
 
 
-def main():
-    start_datetime = datetime.strptime(start_date, "%Y-%m-%dT%H:%M:%S%z")
-    unixtime = time.mktime(start_datetime.timetuple())
+def parse_start_time(value: str) -> float:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp()
+
+
+def seconds_until_next_scrape(now: float, start: float, tick_length: float) -> float:
+    first_scrape = start + DELAY_SECONDS
+    if now < first_scrape:
+        return first_scrape - now
+    elapsed_since_first_scrape = now - first_scrape
+    next_scrape = first_scrape + (int(elapsed_since_first_scrape // tick_length) + 1) * tick_length
+    return max(1.0, next_scrape - now)
+
+
+def main() -> None:
+    enabled = os.getenv("FLAGID_SCRAPE", "") not in {"", "0", "false", "False"}
+    if not enabled:
+        print("FLAGID SCRAPE DISABLED", flush=True)
+        while True:
+            time.sleep(60)
+
+    tick_length_ms = int(os.getenv("TICK_LENGTH", "60000"))
+    if tick_length_ms <= 0:
+        raise ValueError("TICK_LENGTH must be positive")
+    tick_length = tick_length_ms / 1000
+    start = parse_start_time(os.environ["TICK_START"])
+    endpoint = os.environ["FLAGID_ENDPOINT"]
+    parser_name = os.getenv("FLAGID_PARSER", "team_key")
+    parser = load_parser(parser_name)
+    db = psycopg_pool.ConnectionPool(os.environ["TIMESCALE"])
+
+    print(
+        f"Starting flag-ID scraper with parser {parser_name}; "
+        f"tick={tick_length}s endpoint={endpoint}",
+        flush=True,
+    )
     while True:
+        now = time.time()
         try:
-            if flagid_scrape_enabled:
-                update_flagids()
-            crnt_time = time.time()
-            time_diff = max(0, crnt_time - unixtime)
-            wait = (
-                DELAY
-                + tick_length * (time_diff // tick_length)
-                + time_diff % tick_length
-            )
-            time.sleep(wait)
-        except Exception as e:
-            print("ERROR: ", e, flush=True)
-            time.sleep(10)
+            if now >= start:
+                count = update_flagids(db, endpoint, parser, os.environ)
+                print(f"Updated flag IDs ({count})", flush=True)
+        except Exception:
+            print("Unable to update flag IDs", flush=True)
+            import traceback
+            traceback.print_exc()
+
+        time.sleep(seconds_until_next_scrape(time.time(), start, tick_length))
 
 
 if __name__ == "__main__":
