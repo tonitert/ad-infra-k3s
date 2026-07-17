@@ -4,6 +4,8 @@ ingress:
   basicAuth:
     enabled: true
 
+ctf: enowars10
+
 executor:
   replicas: 1
   backend: kubernetes

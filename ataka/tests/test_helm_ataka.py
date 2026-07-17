@@ -16,6 +16,12 @@ def helm_template(*args):
 
 
 class AtakaHelmTemplateTests(unittest.TestCase):
+    def test_ctfcode_uses_the_enowars10_configuration(self):
+        rendered = helm_template("--show-only", "templates/ctfcode-deployment.yaml")
+
+        self.assertIn("name: CTF", rendered)
+        self.assertIn('value: "enowars10"', rendered)
+
     def test_kubernetes_backend_is_default(self):
         rendered = helm_template()
 
