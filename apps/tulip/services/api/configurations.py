@@ -22,29 +22,41 @@
 # You should have received a copy of the GNU General Public License
 # along with Flower.  If not, see <https://www.gnu.org/licenses/>.
 
+import json
 import os
 from pathlib import Path
 
 traffic_dir = Path(os.getenv("TULIP_TRAFFIC_DIR", "/traffic"))
 dump_pcaps_dir = Path(os.getenv("DUMP_PCAPS", "/traffic"))
-tick_length = os.getenv("TICK_LENGTH", 2*60*1000)
-flag_lifetime = os.getenv("FLAG_LIFETIME", 5)
-start_date = os.getenv("TICK_START", "2018-06-27T13:00:00+02:00")
-flag_regex = os.getenv("FLAG_REGEX", "[A-Z0-9]{31}=")
-vm_ip = os.getenv("VM_IP", "10.10.3.1")
+tick_length = int(os.getenv("TICK_LENGTH", "60000"))
+flag_lifetime = int(os.getenv("FLAG_LIFETIME", "-1"))
+start_date = os.getenv("TICK_START", "2026-07-18T12:00:00Z")
+flag_regex = os.getenv("FLAG_REGEX", r"ENO[A-Za-z0-9+/=]{48}")
+vm_ip = os.getenv("VM_IP", "10.1.15.1")
 visualizer_url = os.getenv("VISUALIZER_URL", "http://127.0.0.1:1337")
 
-vm_ip_1 = "10.60.2.1"
-helper = '''
-10.61.5.1:1237 CyberUni 4
-10.61.5.1:1236 CyberUni 3
-10.61.5.1:1235 CyberUni 1
-10.61.5.1:1234 CyberUni 2
-10.60.5.1:3003 ClosedSea 1
-10.60.5.1:3004 ClosedSea 2
-10.62.5.1:5000 Trademark
-10.63.5.1:1337 RPN
-'''
 
-services = [{"ip": x.split(" ")[0].split(":")[0], "port": int(x.split(" ")[0].split(":")[1]), "name": " ".join(x.split(" ")[1:])} for x in helper.strip().split("\n")]
-services += [{"ip": vm_ip_1, "port": -1, "name": "other"}]
+def _load_services() -> list[dict[str, object]]:
+    raw_services = os.getenv("TULIP_SERVICES", "[]")
+    try:
+        configured_services = json.loads(raw_services)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("TULIP_SERVICES must contain a JSON array") from exc
+    if not isinstance(configured_services, list):
+        raise RuntimeError("TULIP_SERVICES must contain a JSON array")
+
+    services = []
+    for service in configured_services:
+        if not isinstance(service, dict):
+            raise RuntimeError("Every TULIP_SERVICES entry must be an object")
+        ip, port, name = service.get("ip"), service.get("port"), service.get("name")
+        if not isinstance(ip, str) or not isinstance(port, int) or not isinstance(name, str):
+            raise RuntimeError("TULIP_SERVICES entries require string ip/name and integer port")
+        services.append({"ip": ip, "port": port, "name": name})
+
+    if not any(service["port"] == -1 for service in services):
+        services.append({"ip": vm_ip, "port": -1, "name": "other"})
+    return services
+
+
+services = _load_services()

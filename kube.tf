@@ -763,13 +763,17 @@ module "kube-hetzner" {
       source_ips      = [] # Won't be used for this rule
       destination_ips = ["0.0.0.0/0", "::/0"]
     },
+    # ENOWARS supplies the OpenVPN endpoint in the downloaded configuration.
+    # Keep this UDP rule independent of the endpoint IP/port so a fresh
+    # organizer configuration can be installed as a sealed secret without a
+    # matching manual firewall change.
     {
-      description     = "Allow Ataka WireGuard test target"
+      description     = "Allow ENOWARS OpenVPN"
       direction       = "out"
       protocol        = "udp"
-      port            = "51820"
+      port            = "10000-65535"
       source_ips      = []
-      destination_ips = ["77.42.45.155/32"]
+      destination_ips = ["0.0.0.0/0"]
     }
   ]
 

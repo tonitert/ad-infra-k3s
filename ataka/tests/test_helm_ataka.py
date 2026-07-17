@@ -51,25 +51,30 @@ class AtakaHelmTemplateTests(unittest.TestCase):
         self.assertIn("value: tcp://localhost:2375", rendered)
         self.assertNotIn("name: ataka-wireguard\n", rendered)
 
-    def test_wireguard_disabled_removes_gateway_and_route_agent(self):
-        rendered = helm_template("--set", "wireguard.enabled=false")
+    def test_disabling_all_vpns_removes_gateway_and_route_agent(self):
+        rendered = helm_template(
+            "--set",
+            "wireguard.enabled=false",
+            "--set",
+            "openvpn.enabled=false",
+        )
 
         self.assertNotIn("ataka-wireguard-gateway", rendered)
         self.assertNotIn("ataka-route-agent", rendered)
 
-    def test_wireguard_route_cidr_defaults_to_validation_target(self):
+    def test_openvpn_routes_enowars_targets_by_default(self):
         rendered = helm_template()
 
-        self.assertIn("name: WIREGUARD_ROUTE_CIDRS", rendered)
-        self.assertIn('value: "10.99.0.2/32"', rendered)
+        self.assertIn("name: OPENVPN_ROUTE_CIDRS", rendered)
+        self.assertIn('value: "10.0.13.37/32 10.1.0.0/16"', rendered)
         self.assertIn("name: ROUTE_CIDRS", rendered)
 
     def test_wireguard_route_cidrs_support_ipv6_rendering(self):
         rendered = helm_template(
             "--set",
-            "wireguard.routeCidrs[0]=10.99.0.2/32",
+            "openvpn.routeCidrs[0]=10.99.0.2/32",
             "--set",
-            "wireguard.routeCidrs[1]=fd00::2/128",
+            "openvpn.routeCidrs[1]=fd00::2/128",
         )
 
         self.assertIn('value: "10.99.0.2/32 fd00::2/128"', rendered)
@@ -112,6 +117,8 @@ class AtakaHelmTemplateTests(unittest.TestCase):
                 "openvpn.gateway.enabled=true",
                 "--set",
                 "openvpn.routeCidrs[0]=10.8.0.0/24",
+                "--set",
+                "wireguard.enabled=true",
             ],
             cwd="/workspace",
             text=True,

@@ -63,6 +63,8 @@ services:
       TICK_START: ${TICK_START}
       TICK_LENGTH: ${TICK_LENGTH}
       VM_IP: ${VM_IP}
+      FLAG_LIFETIME: ${FLAG_LIFETIME}
+      TULIP_SERVICES: ${TULIP_SERVICES}
 
   flagids:
     restart: unless-stopped
@@ -80,7 +82,7 @@ services:
       TICK_START: ${TICK_START}
       TICK_LENGTH: ${TICK_LENGTH}
       FLAGID_SCRAPE: ${FLAGID_SCRAPE}
-      TEAM_ID: ${TEAM_ID}
+      TEAM_ADDRESS: ${TEAM_ADDRESS}
       FLAGID_ENDPOINT: ${FLAGID_ENDPOINT}
       VISUALIZER_URL: ${VISUALIZER_URL}
       DUMP_PCAPS: ${DUMP_PCAPS}

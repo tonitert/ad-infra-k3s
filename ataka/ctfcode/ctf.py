@@ -1,3 +1,4 @@
+import os
 import time
 from importlib import import_module, reload
 import logging
@@ -111,14 +112,19 @@ class CTF:
         return self.get_start_time() + self.get_round_time() * (self.get_cur_tick() + 1)
 
     @catch(default={})
-    @expect(validator=lambda x, self: type(x) == dict and all(
+    @expect(validator=lambda x, self, additional_services=(): type(x) == dict and all(
         [type(service) == str and type(item) == list and all(
-            ['ip' in entry and 'extra' in entry and type(entry['ip']) == str and type(entry['extra'] == str)
+            ['ip' in entry and 'extra' in entry and type(entry['ip']) == str and type(entry['extra']) == str
              for entry in item]
         ) for service, item in x.items()]
     ))
-    def get_targets(self):
-        return self._module.get_targets()
+    def get_targets(self, additional_services=()):
+        targets = self._module.get_targets()
+        missing_services = set(additional_services).difference(targets)
+        if missing_services and hasattr(self._module, "get_fallback_targets"):
+            fallback_targets = self._module.get_fallback_targets(missing_services)
+            targets.update(fallback_targets)
+        return targets
 
     @catch(default=[])
     @expect(validator=lambda x, self, flags: type(x) == list and len(x) == len(flags) and all(
@@ -141,15 +147,23 @@ class CTF:
             self.get_flag_ratelimit()
             self.get_start_time()
 
-            self.get_targets()
+            # Target discovery and flag submission are network operations.  Do
+            # not perform them as a side effect of starting a production pod:
+            # in particular, generating test flags would send invalid flags to
+            # the live ENOWARS flag sink.  They can still be exercised when a
+            # maintainer explicitly enables the live self-test.
+            if os.getenv("CTF_LIVE_SELF_TEST", "false").lower() == "true":
+                self.get_targets()
 
-            fake_flag_count = min(batchsize, 10)
-            logging.info(f"Submitting {fake_flag_count} fake flags...")
-            fake_flags = [exrex.getone(regex) for _ in range(fake_flag_count)]
-            status_list = self.submit_flags(fake_flags)
-            for flag, status in zip(fake_flags, status_list):
-                logging.info(f"    {flag} -> {status}")
-            logging.info("Test finished (if you only see flag submission results, everything is good)")
+                fake_flag_count = min(batchsize, 10)
+                logging.info(f"Submitting {fake_flag_count} fake flags...")
+                fake_flags = [exrex.getone(regex) for _ in range(fake_flag_count)]
+                status_list = self.submit_flags(fake_flags)
+                for flag, status in zip(fake_flags, status_list):
+                    logging.info(f"    {flag} -> {status}")
+                logging.info("Live test finished")
+            else:
+                logging.info("Skipping live target and flag-sink self-test; set CTF_LIVE_SELF_TEST=true to enable it")
         except Exception as e:
             logging.error(f"Self-Test FAILED")
             logging.error(traceback.format_exc())

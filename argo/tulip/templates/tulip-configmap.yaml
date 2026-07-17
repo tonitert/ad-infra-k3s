@@ -8,13 +8,14 @@ data:
   TIMESCALE: "postgres://tulip@timescale:5432/tulip"
   TRAFFIC_DIR_DOCKER: "/traffic"
   VISUALIZER_URL: "http://scraper.example.com"
+  TULIP_SERVICES: {{ .Values.enowars.services | toJson | quote }}
   
   # Game config
-  TICK_START: "2024-11-30T13:00:00Z"
-  TICK_LENGTH: "180000"
-  FLAG_REGEX: "SAAR\\{[A-Za-z0-9_-]{32}\\}"
-  VM_IP: "10.10.3.1"
-  TEAM_ID: "3"
+  TICK_START: {{ required "enowars.tickStart is required" .Values.enowars.tickStart | quote }}
+  TICK_LENGTH: {{ required "enowars.tickLengthMs is required" .Values.enowars.tickLengthMs | toString | quote }}
+  FLAG_REGEX: {{ required "enowars.flagRegex is required" .Values.enowars.flagRegex | quote }}
+  VM_IP: {{ required "enowars.teamAddress is required" .Values.enowars.teamAddress | quote }}
+  TEAM_ADDRESS: {{ required "enowars.teamAddress is required" .Values.enowars.teamAddress | quote }}
   
   # PCAP_OVER_IP CONFIGS
   PCAP_OVER_IP: ""
@@ -25,11 +26,11 @@ data:
   DUMP_PCAPS_FILENAME: "2006-01-02_15-04-05.pcap"
   
   # FLAGID CONFIGS
-  FLAGID_SCRAPE: ""
-  FLAGID_SCAN: ""
-  FLAG_LIFETIME: ""
-  FLAGID_ENDPOINT: "http://flagidendpoint:8000/flagids.json"
+  FLAGID_SCRAPE: "1"
+  FLAGID_SCAN: "1"
+  FLAG_LIFETIME: {{ .Values.enowars.flagLifetime | toString | quote }}
+  FLAGID_ENDPOINT: {{ required "enowars.attackInfoEndpoint is required" .Values.enowars.attackInfoEndpoint | quote }}
   
   # FLAG_VALIDATOR CONFIGS
-  FLAG_VALIDATOR_TYPE: ""
-  FLAG_VALIDATOR_TEAM: "42"
+  FLAG_VALIDATOR_TYPE: "enowars"
+  FLAG_VALIDATOR_TEAM: {{ required "enowars.teamId is required" .Values.enowars.teamId | toString | quote }}

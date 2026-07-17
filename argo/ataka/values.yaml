@@ -25,14 +25,16 @@ autoscaledNodes:
     effect: NoSchedule
 
 openvpn:
-  enabled: false
+  enabled: true
   image: ghcr.io/tonitert/ad-infra-k3s/ataka-openvpn:latest
   secretName: openvpn-config
   configKey: vpn.conf
   device: tun0
-  routeCidrs: []
+  routeCidrs:
+    - 10.0.13.37/32
+    - 10.1.0.0/16
   gateway:
-    enabled: false
+    enabled: true
     image: ghcr.io/tonitert/ad-infra-k3s/ataka-openvpn:latest
   routeAgent:
     enabled: true
@@ -43,7 +45,7 @@ openvpn:
   vpnRouteLabelValue: "true"
 
 wireguard:
-  enabled: true
+  enabled: false
   image: ghcr.io/tonitert/ad-infra-k3s/ataka-wireguard:latest
   secretName: ataka-wireguard-config
   configKey: wg0.conf

@@ -49,12 +49,9 @@ class TargetJobGenerator:
                     continue
 
                 print("New tick")
-                all_targets = self._ctf.get_targets()
-
                 async with database.get_session() as session:
-                    next_version = await session.execute(Target.version_seq)
-
-                    # if we have an exploit, submit a job for this service
+                    # Query exploits first: some CTFs provide attack information only for
+                    # a subset of services, but an exploit still needs IP-only targets.
                     get_exploits = select(ExploitHistory) \
                         .options(
                         selectinload(ExploitHistory.exploits),
@@ -63,6 +60,9 @@ class TargetJobGenerator:
                     all_exploits = {exploit.service: [] for exploit in exploit_list}
                     for history in exploit_list:
                         all_exploits[history.service].append(history)
+
+                    all_targets = self._ctf.get_targets(set(all_exploits))
+                    next_version = await session.execute(Target.version_seq)
 
                     job_list = []
                     for service, targets in all_targets.items():

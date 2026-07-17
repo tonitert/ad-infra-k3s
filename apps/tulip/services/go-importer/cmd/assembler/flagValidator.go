@@ -85,7 +85,7 @@ func (validator *EnowarsFlagValidator) IsValid(flag string, refTime time.Time) b
 	roundId := binary.LittleEndian.Uint32(data[12:16]) // = Tick
 
 	return (validator.teamId == -1 || validator.teamId == ownerId) &&
-		serviceId <= validator.serviceCount &&
+		serviceId > 0 && serviceId <= validator.serviceCount &&
 		roundOffset <= validator.maxFlagStores &&
 		(validator.startTime.IsZero() ||
 			validator.tickLength <= 0 ||
