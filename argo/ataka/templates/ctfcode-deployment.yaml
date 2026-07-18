@@ -65,9 +65,6 @@ spec:
         - envFrom:
             - secretRef:
                 name: ataka-env-secret
-          env:
-            - name: CTF
-              value: {{ required "ctf is required" .Values.ctf | quote }}
           image: ghcr.io/tonitert/ad-infra-k3s/ataka-ctfcode:latest
           imagePullPolicy: Always
           name: ctfcode

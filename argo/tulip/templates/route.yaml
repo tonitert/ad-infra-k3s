@@ -16,24 +16,6 @@ spec:
   hostnames:
     - tulip.ad.tertsonen.xyz
   rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /api
-      filters:
-        - type: ExtensionRef
-          extensionRef:
-            group: traefik.io
-            kind: Middleware
-            name: tulip-basic-auth
-        - type: ExtensionRef
-          extensionRef:
-            group: traefik.io
-            kind: Middleware
-            name: tulip-api-strip-prefix
-      backendRefs:
-        - name: api
-          port: 5000
     # /
     - matches:
         - path: 

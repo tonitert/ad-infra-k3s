@@ -1,9 +1,0 @@
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: tulip-api-strip-prefix
-  namespace: tulip
-spec:
-  stripPrefix:
-    prefixes:
-      - /api
