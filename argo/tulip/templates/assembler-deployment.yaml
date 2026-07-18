@@ -39,6 +39,9 @@ spec:
                 name: tulip-config
           image: ghcr.io/tonitert/ad-infra-k3s/tulip-assembler:latest
           name: assembler
+          env:
+            - name: GOMEMLIMIT
+              value: "1536MiB"
           ports:
             - containerPort: 8080
               name: health
