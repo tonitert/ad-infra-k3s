@@ -25,6 +25,7 @@ spec:
   template:
     metadata:
       annotations:
+        ataka.ad.tertsonen.xyz/ctf-config-revision: "enowars10-runlocal-target"
         kompose.cmd: kompose convert -f ../../apps/ataka/docker-compose.yml -c --generate-network-policies
         kompose.version: 1.36.0 (ae2a39403)
       labels:

@@ -22,6 +22,7 @@ def load_config():
     pwn.remote = lambda *args, **kwargs: None
     requests = types.ModuleType("requests")
     requests.get = lambda *args, **kwargs: None
+    requests.exceptions = types.SimpleNamespace(RequestException=RuntimeError)
     previous = sys.modules.get("pwn")
     previous_requests = sys.modules.get("requests")
     sys.modules["pwn"] = pwn
@@ -55,8 +56,10 @@ class Enowars10ConfigTests(unittest.TestCase):
         self.assertEqual(self.config.ROUND_TIME, 60)
         self.assertEqual(self.config.ATTACK_INFO_URL, "https://10.enowars.com/scoreboard/attack.json")
         self.assertFalse(self.config.LIVE_SELF_TEST)
+        self.assertEqual(self.config.ADDITIONAL_SERVICES, {"test"})
 
     def test_attack_info_services_and_extra_are_preserved(self):
+        self.config.ADDITIONAL_SERVICES = set()
         payload = {
             "availableTeams": ["10.1.52.1"],
             "services": {
@@ -71,7 +74,57 @@ class Enowars10ConfigTests(unittest.TestCase):
         targets = self.config.get_targets()
 
         self.assertEqual(list(targets), ["service_1"])
-        self.assertEqual(targets["service_1"], [{"ip": "10.1.52.1", "extra": '{"7":[["user73"],["user5"]]}'}])
+        self.assertEqual(
+            targets["service_1"],
+            [
+                {"ip": "10.1.52.1", "extra": '{"7":[["user73"],["user5"]]}'},
+                {"ip": "10.1.15.1", "extra": '{"7":[["own-user"]]}'},
+            ],
+        )
+
+    def test_additional_test_service_uses_team_ips(self):
+        def get(url, timeout):
+            if url == self.config.ATTACK_INFO_URL:
+                return FakeResponse({"services": {}})
+            self.assertEqual(url, self.config.OPPONENT_IPS_URL)
+            return FakeResponse(text="10.1.52.1\n10.1.15.1\n10.1.42.1\n")
+
+        self.config.requests.get = get
+
+        targets = self.config.get_targets()
+
+        self.assertEqual(
+            targets,
+            {
+                "test": [
+                    {"ip": "10.1.15.1", "extra": "[]"},
+                    {"ip": "10.1.42.1", "extra": "[]"},
+                    {"ip": "10.1.52.1", "extra": "[]"},
+                ]
+            },
+        )
+
+    def test_additional_test_service_survives_attack_info_failure(self):
+        class FailingResponse(FakeResponse):
+            def raise_for_status(self):
+                raise RuntimeError("not found")
+
+        def get(url, timeout):
+            if url == self.config.ATTACK_INFO_URL:
+                return FailingResponse()
+            return FakeResponse(text="10.1.52.1\n10.1.15.1\n")
+
+        self.config.requests.get = get
+
+        self.assertEqual(
+            self.config.get_targets(),
+            {
+                "test": [
+                    {"ip": "10.1.15.1", "extra": "[]"},
+                    {"ip": "10.1.52.1", "extra": "[]"},
+                ]
+            },
+        )
 
     def test_fallback_targets_use_documented_opponent_ip_endpoint(self):
         def get(url, timeout):
@@ -86,6 +139,7 @@ class Enowars10ConfigTests(unittest.TestCase):
             targets,
             {
                 "without-attack-info": [
+                    {"ip": "10.1.15.1", "extra": "[]"},
                     {"ip": "10.1.42.1", "extra": "[]"},
                     {"ip": "10.1.52.1", "extra": "[]"},
                 ]

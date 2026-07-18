@@ -30,6 +30,7 @@ FLAG_BATCHSIZE = 1000
 FLAG_RATELIMIT = 5
 # Do not submit generated flags to the live EnoFlagSink at pod startup.
 LIVE_SELF_TEST = False
+ADDITIONAL_SERVICES = {"test"}
 
 REQUEST_TIMEOUT = (3.05, 10)
 SUBMISSION_TIMEOUT = 5
@@ -58,17 +59,20 @@ def get_all_target_ips() -> list[str]:
         if not address:
             continue
         ipaddress.ip_address(address)
-        if address != OWN_HOST:
-            ips.add(address)
+        ips.add(address)
     return sorted(ips, key=ipaddress.ip_address)
 
 
 def get_targets() -> dict[str, list[dict[str, str]]]:
-    """Return attack-info targets for every service currently announced by ENOWARS."""
-    payload = _get_json(ATTACK_INFO_URL)
-    services = payload.get("services", {})
-    if not isinstance(services, dict):
-        raise ValueError("attack.json has no object-valued services field")
+    """Return ENOWARS attack-info targets and configured IP-only services."""
+    try:
+        payload = _get_json(ATTACK_INFO_URL)
+        services = payload.get("services", {})
+        if not isinstance(services, dict):
+            raise ValueError("attack.json has no object-valued services field")
+    except (requests.exceptions.RequestException, ValueError) as error:
+        logging.warning("ENOWARS attack info unavailable; using configured IP-only services: %s", error)
+        services = {}
 
     targets = {}
     for service, service_targets in services.items():
@@ -81,8 +85,12 @@ def get_targets() -> dict[str, list[dict[str, str]]]:
                 "extra": json.dumps(attack_info, separators=(",", ":")),
             }
             for address, attack_info in service_targets.items()
-            if isinstance(address, str) and address != OWN_HOST
+            if isinstance(address, str)
         ]
+
+    missing_services = ADDITIONAL_SERVICES.difference(targets)
+    if missing_services:
+        targets.update(get_fallback_targets(missing_services))
     return targets
 
 

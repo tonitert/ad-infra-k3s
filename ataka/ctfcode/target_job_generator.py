@@ -43,12 +43,8 @@ class TargetJobGenerator:
                     await cancel_queue.send_message(JobMessage(action=JobAction.CANCEL, job_id=job.id))
 
             while True:
-                if (sleep_duration := self._ctf.get_start_time() - time.time()) > 0:
-                    print(f"CTF not started yet, sleeping for {int(sleep_duration)} seconds...")
-                    await sleep(min(self._ctf.get_round_time(), sleep_duration))
-                    continue
-
-                print("New tick")
+                ctf_started = self._ctf.get_start_time() <= time.time()
+                print("New tick" if ctf_started else "Refreshing pre-start targets")
                 async with database.get_session() as session:
                     # Query exploits first: some CTFs provide attack information only for
                     # a subset of services, but an exploit still needs IP-only targets.
@@ -70,7 +66,7 @@ class TargetJobGenerator:
                                        for t in targets]
                         session.add_all(target_objs)
 
-                        if service not in all_exploits:
+                        if not ctf_started or service not in all_exploits:
                             continue
 
                         exploits_for_this_service = all_exploits[service]
@@ -92,14 +88,20 @@ class TargetJobGenerator:
 
                                 job_list += [job_obj]
 
-                    for service, histories in all_exploits.items():
-                        for history in histories:
-                            print(f"WARNING: Got exploit history {history.id} for service {service} but no targets for this service.")
+                    if ctf_started:
+                        for service, histories in all_exploits.items():
+                            for history in histories:
+                                print(f"WARNING: Got exploit history {history.id} for service {service} but no targets for this service.")
 
                     await session.commit()
 
                     for job in job_list:
                         await job_queue.send_message(JobMessage(action=JobAction.QUEUE, job_id=job.id))
+
+                if (sleep_duration := self._ctf.get_start_time() - time.time()) > 0:
+                    print(f"CTF not started yet, sleeping for {int(sleep_duration)} seconds...")
+                    await sleep(min(self._ctf.get_round_time(), sleep_duration))
+                    continue
 
                 # sleep until next tick
                 next_tick = self._ctf.get_next_tick_start()

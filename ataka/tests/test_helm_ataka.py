@@ -27,6 +27,10 @@ class AtakaHelmTemplateTests(unittest.TestCase):
         self.assertIn("ataka-registry.local", rendered)
         self.assertIn("name: BUILDKIT_BUILDER_NAME", rendered)
         self.assertIn("moby/buildkit:buildx-stable-1", rendered)
+        self.assertIn('ataka.ad.tertsonen.xyz/ctf-config-revision: "enowars10-runlocal-target"', rendered)
+        player_cli = Path("/workspace/ataka/player-cli/player_cli/exploit/__init__.py").read_text()
+        self.assertIn("all_targets=False, ignore_exclusions=True", player_cli)
+        self.assertIn("ignore_exclusions=ignore_exclusions or not all_targets", player_cli)
         self.assertNotIn("kaniko", rendered.lower())
         self.assertNotIn("ataka-builder", rendered)
 
