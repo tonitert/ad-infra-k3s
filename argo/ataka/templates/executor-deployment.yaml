@@ -1,6 +1,11 @@
 {{- $executor := .Values.executor | default dict -}}
 {{- $backend := get $executor "backend" | default "kubernetes" -}}
 {{- $buildkit := get $executor "buildkit" | default dict -}}
+{{- $executionPod := get $executor "executionPod" | default dict -}}
+{{- $executionPodNodeSelector := get $executionPod "nodeSelector" | default dict -}}
+{{- $executionPodResources := get $executionPod "resources" | default dict -}}
+{{- $executionPodRequests := get $executionPodResources "requests" | default dict -}}
+{{- $executionPodLimits := get $executionPodResources "limits" | default dict -}}
 {{- $wireguard := .Values.wireguard | default dict -}}
 {{- $openvpn := .Values.openvpn | default dict -}}
 {{- $openvpnGateway := get $openvpn "gateway" | default dict -}}
@@ -94,6 +99,18 @@ spec:
               value: {{ get $executor "maxConcurrentJobs" | default 1 | quote }}
             - name: EXECUTOR_TARGETS_PER_POD
               value: {{ get $executor "targetsPerPod" | default 30 | quote }}
+            - name: EXECUTION_POD_NODE_SELECTOR_KEY
+              value: {{ get $executionPodNodeSelector "key" | default "" | quote }}
+            - name: EXECUTION_POD_NODE_SELECTOR_VALUE
+              value: {{ get $executionPodNodeSelector "value" | default "" | quote }}
+            - name: EXECUTION_POD_CPU_REQUEST
+              value: {{ get $executionPodRequests "cpu" | default "" | quote }}
+            - name: EXECUTION_POD_MEMORY_REQUEST
+              value: {{ get $executionPodRequests "memory" | default "" | quote }}
+            - name: EXECUTION_POD_CPU_LIMIT
+              value: {{ get $executionPodLimits "cpu" | default "" | quote }}
+            - name: EXECUTION_POD_MEMORY_LIMIT
+              value: {{ get $executionPodLimits "memory" | default "" | quote }}
             - name: BUILDKIT_BUILDER_NAME
               value: {{ get $buildkit "builderName" | default "ataka-buildkit" | quote }}
             - name: BUILDKIT_IMAGE
