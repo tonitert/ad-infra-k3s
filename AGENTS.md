@@ -8,6 +8,8 @@ Do not use configmaps for source code. If a configmap has a code file that is ex
 HTTP traffic to services is proxied through traefik.
 Use opentofu commands (tofu --version etc.) instead of terraform.
 When building docker containers, use host networking.
+Pushing containers or branches needs to be done outside of the sandbox.
+Make concise changes. Do not slop.
 
 # Services
 
