@@ -92,6 +92,8 @@ spec:
               value: {{ get $executor "serviceAccountName" | default "ataka-executor" | quote }}
             - name: EXECUTOR_MAX_CONCURRENT_JOBS
               value: {{ get $executor "maxConcurrentJobs" | default 1 | quote }}
+            - name: EXECUTOR_TARGETS_PER_POD
+              value: {{ get $executor "targetsPerPod" | default 30 | quote }}
             - name: BUILDKIT_BUILDER_NAME
               value: {{ get $buildkit "builderName" | default "ataka-buildkit" | quote }}
             - name: BUILDKIT_IMAGE

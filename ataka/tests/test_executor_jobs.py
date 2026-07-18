@@ -1,6 +1,8 @@
 import asyncio
 import os
 import sys
+import tempfile
+import time
 import types
 import unittest
 from enum import Enum
@@ -384,7 +386,7 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         )
         execution = LocalExecution(7, exploit, LocalTarget("10.99.0.2", "x"), JobExecutionStatus.RUNNING)
 
-        pod = backend._execution_pod_spec("ataka-exec-7", execution, 30)
+        pod = backend._execution_pod_spec("ataka-exec-7", [execution], 30)
         container = pod.spec.containers[0]
 
         self.assertEqual(pod.metadata.labels["ataka.ad.tertsonen.xyz/vpn-route"], "true")
@@ -392,7 +394,10 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(hasattr(container, "command"))
         self.assertEqual(container.image, "ataka-registry.local/ataka-exploit/demo:abc")
         self.assertEqual(container.security_context.capabilities.add, ["NET_RAW"])
-        self.assertIn(("TARGET_IP", "10.99.0.2"), [(env.name, env.value) for env in container.env])
+        environment = [(env.name, env.value) for env in container.env]
+        self.assertIn(("ATAKA_BATCH_SIZE", "1"), environment)
+        self.assertIn(("ATAKA_EXECUTION_ID_0", "7"), environment)
+        self.assertIn(("ATAKA_TARGET_IP_0", "10.99.0.2"), environment)
         self.assertEqual(len(pod.spec.tolerations), 1)
         self.assertEqual(pod.spec.tolerations[0].key, "ataka.ad.tertsonen.xyz/autoscaled")
         self.assertEqual(pod.spec.tolerations[0].value, "true")
@@ -405,14 +410,14 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         async def wait_for_pod(name, timeout):
             return "Failed", "DeadlineExceeded"
 
-        async def stream_logs(name, execution, channel):
-            execution.stdout += "partial"
+        async def stream_logs(name, executions, channel):
+            executions[0].stdout += "partial"
 
         backend._create_pod = lambda pod: None
         backend._delete_pod = lambda name: deleted.append(name)
         backend._wait_for_pod = wait_for_pod
         backend._wait_for_container_start = lambda name, timeout: asyncio.sleep(0, result=True)
-        backend._stream_pod_logs = stream_logs
+        backend._stream_batch_pod_logs = stream_logs
 
         exploit = LocalExploit(
             id="demo",
@@ -424,7 +429,7 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         )
         execution = LocalExecution(8, exploit, LocalTarget("10.99.0.2"), JobExecutionStatus.RUNNING)
 
-        result = await backend._run_execution(99, execution, asyncio.get_running_loop().time() + 5, None)
+        result = (await backend._run_batch(99, [execution], asyncio.get_running_loop().time() + 5, None))[0]
 
         self.assertEqual(result.status, JobExecutionStatus.TIMEOUT)
         self.assertIn("<EXECUTOR TIMEOUT HAPPENED>", result.stderr)
@@ -453,7 +458,7 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         )
         execution = LocalExecution(9, exploit, LocalTarget("10.99.0.3"), JobExecutionStatus.RUNNING)
 
-        result = await backend._run_execution(100, execution, asyncio.get_running_loop().time() + 5, None)
+        result = (await backend._run_batch(100, [execution], asyncio.get_running_loop().time() + 5, None))[0]
 
         self.assertEqual(result.status, JobExecutionStatus.TIMEOUT)
         self.assertIn("<EXECUTOR TIMEOUT HAPPENED>", result.stderr)
@@ -479,11 +484,112 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         )
         execution = LocalExecution(10, exploit, LocalTarget("10.99.0.4"), JobExecutionStatus.RUNNING)
 
-        result = await backend._run_execution(101, execution, asyncio.get_running_loop().time() + 5, None)
+        result = (await backend._run_batch(101, [execution], asyncio.get_running_loop().time() + 5, None))[0]
 
         self.assertEqual(result.status, JobExecutionStatus.FAILED)
         self.assertIn("Kubernetes API unavailable", result.stderr)
         self.assertTrue(deleted)
+
+    async def test_run_job_groups_targets_into_batch_pods(self):
+        backend = self.make_backend()
+        backend.settings.targets_per_pod = 30
+        exploit = LocalExploit(
+            id="demo",
+            service="svc",
+            author="alice",
+            docker_name="demo-ctx",
+            status=LocalExploitStatus.FINISHED,
+            docker_id="ataka-registry.local/ataka-exploit/demo:abc",
+        )
+        executions = [
+            LocalExecution(index, exploit, LocalTarget(f"10.99.0.{index}"), JobExecutionStatus.RUNNING)
+            for index in range(1, 62)
+        ]
+        batches = []
+
+        async def run_batch(job_id, batch, timeout, channel):
+            batches.append(batch)
+            return batch
+
+        backend._run_batch = run_batch
+        result = await backend.run_job(42, LocalJob(exploit, time.time() + 30, executions), None)
+
+        self.assertEqual([len(batch) for batch in batches], [30, 30, 1])
+        self.assertEqual(result, executions)
+
+    def test_batch_log_markers_keep_target_output_and_statuses_separate(self):
+        backend = self.make_backend()
+        exploit = LocalExploit("demo", "svc", "alice", "demo-ctx", LocalExploitStatus.FINISHED)
+        first = LocalExecution(11, exploit, LocalTarget("10.99.0.11"), JobExecutionStatus.RUNNING)
+        second = LocalExecution(12, exploit, LocalTarget("10.99.0.12"), JobExecutionStatus.RUNNING)
+        executions = {first.database_id: first, second.database_id: second}
+        original_output_message = executor_backends.OutputMessage
+        executor_backends.OutputMessage = lambda execution_id, stdout, output: types.SimpleNamespace(
+            execution_id=execution_id, stdout=stdout, output=output
+        )
+        try:
+            current, message = backend._process_batch_log_line("__ATAKA_BATCH_START__:11", executions, None)
+            self.assertIs(current, first)
+            self.assertIsNone(message)
+
+            current, message = backend._process_batch_log_line("first target output", executions, current)
+            self.assertIs(current, first)
+            self.assertEqual(message.execution_id, 11)
+            self.assertEqual(first.stdout, "first target output\n")
+
+            current, message = backend._process_batch_log_line("__ATAKA_BATCH_END__:11:0", executions, current)
+            self.assertIsNone(current)
+            self.assertIsNone(message)
+            self.assertEqual(first.status, JobExecutionStatus.FINISHED)
+
+            current, _ = backend._process_batch_log_line("__ATAKA_BATCH_START__:12", executions, None)
+            current, message = backend._process_batch_log_line("second target output", executions, current)
+            self.assertEqual(message.execution_id, 12)
+            backend._process_batch_log_line("__ATAKA_BATCH_END__:12:1", executions, current)
+            self.assertEqual(second.status, JobExecutionStatus.FAILED)
+        finally:
+            executor_backends.OutputMessage = original_output_message
+
+    async def test_concurrent_exploit_builds_initialize_buildkit_once_at_a_time(self):
+        backend = self.make_backend()
+        original_path = executor_backends.Path
+        original_builder = backend._ensure_buildx_builder
+        original_build = backend._build_with_buildx
+        original_wrapper_context = backend._create_batch_wrapper_context
+        active_builder_initializations = 0
+        max_builder_initializations = 0
+
+        def ensure_builder():
+            nonlocal active_builder_initializations, max_builder_initializations
+            active_builder_initializations += 1
+            max_builder_initializations = max(max_builder_initializations, active_builder_initializations)
+            time.sleep(0.02)
+            active_builder_initializations -= 1
+
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                executor_backends.Path = lambda value: original_path(directory)
+                backend._ensure_buildx_builder = ensure_builder
+                backend._build_with_buildx = lambda context_path, image_ref: "built"
+                wrapper_context = original_path(directory) / "batch-wrapper.tar"
+                wrapper_context.write_text("wrapper")
+                backend._create_batch_wrapper_context = lambda base_image: wrapper_context
+                exploits = [
+                    LocalExploit("one", "svc", "alice", "one-context", LocalExploitStatus.BUILDING),
+                    LocalExploit("two", "svc", "bob", "two-context", LocalExploitStatus.BUILDING),
+                ]
+                for exploit in exploits:
+                    (original_path(directory) / exploit.docker_name).write_text("context")
+
+                await asyncio.gather(*(backend._build_exploit(exploit) for exploit in exploits))
+
+            self.assertEqual(max_builder_initializations, 1)
+            self.assertTrue(all(exploit.status is LocalExploitStatus.FINISHED for exploit in exploits))
+        finally:
+            executor_backends.Path = original_path
+            backend._ensure_buildx_builder = original_builder
+            backend._build_with_buildx = original_build
+            backend._create_batch_wrapper_context = original_wrapper_context
 
 
 class BackendSelectionTests(unittest.TestCase):

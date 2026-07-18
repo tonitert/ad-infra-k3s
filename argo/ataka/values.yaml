@@ -10,6 +10,7 @@ executor:
   replicas: 1
   maxReplicas: 1
   maxConcurrentJobs: 4
+  targetsPerPod: 30
   backend: kubernetes
   image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
   serviceAccountName: ataka-executor

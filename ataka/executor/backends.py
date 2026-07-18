@@ -1,10 +1,12 @@
 import asyncio
 import hashlib
+import io
 import math
 import os
 import re
 import shlex
 import subprocess
+import tarfile
 import tempfile
 import time
 import traceback
@@ -216,6 +218,7 @@ class KubernetesSettings:
     autoscaled_toleration_key: str
     autoscaled_toleration_value: str
     autoscaled_toleration_effect: str
+    targets_per_pod: int = 30
 
     @classmethod
     def from_env(cls):
@@ -242,6 +245,7 @@ class KubernetesSettings:
             autoscaled_toleration_key=os.environ.get("AUTOSCALED_TOLERATION_KEY", ""),
             autoscaled_toleration_value=os.environ.get("AUTOSCALED_TOLERATION_VALUE", ""),
             autoscaled_toleration_effect=os.environ.get("AUTOSCALED_TOLERATION_EFFECT", "NoSchedule"),
+            targets_per_pod=max(1, int(os.environ.get("EXECUTOR_TARGETS_PER_POD", "30"))),
         )
 
 
@@ -252,6 +256,7 @@ class KubernetesExecutorBackend(ExecutorBackend):
         self.settings = settings or KubernetesSettings.from_env()
         self._exploits = {}
         self._pods_by_job = {}
+        self._buildkit_lock = asyncio.Lock()
 
         if core_api is None:
             from kubernetes import client, config
@@ -289,9 +294,18 @@ class KubernetesExecutorBackend(ExecutorBackend):
         return local
 
     async def run_job(self, job_id: int, job: LocalJob, channel) -> list[LocalExecution]:
-        tasks = [self._run_execution(job_id, execution, job.timeout, channel) for execution in job.executions]
-        print(f"Starting {len(tasks)} Kubernetes exploit pods for {job.exploit.id} (service {job.exploit.service})")
-        return await asyncio.gather(*tasks)
+        batches = [
+            job.executions[index:index + self.settings.targets_per_pod]
+            for index in range(0, len(job.executions), self.settings.targets_per_pod)
+        ]
+        print(
+            f"Starting {len(batches)} Kubernetes exploit pods for {len(job.executions)} targets "
+            f"of {job.exploit.id} (service {job.exploit.service})"
+        )
+        results = await asyncio.gather(
+            *(self._run_batch(job_id, batch, job.timeout, channel) for batch in batches)
+        )
+        return [execution for batch in results for execution in batch]
 
     async def cancel_job(self, job_id: int):
         pod_names = list(self._pods_by_job.pop(job_id, set()))
@@ -309,12 +323,20 @@ class KubernetesExecutorBackend(ExecutorBackend):
         repo = f"ataka-exploit/{_k8s_name(exploit.docker_name, 48)}"
         pull_ref = f"{self.settings.registry_pull}/{repo}:{digest}"
         push_ref = f"{self.settings.registry_push}/{repo}:{digest}"
+        batch_pull_ref = f"{pull_ref}-batch"
+        batch_push_ref = f"{push_ref}-batch"
 
         try:
-            await asyncio.to_thread(self._ensure_buildx_builder)
+            async with self._buildkit_lock:
+                await asyncio.to_thread(self._ensure_buildx_builder)
             output = await asyncio.to_thread(self._build_with_buildx, context_path, push_ref)
+            wrapper_context = self._create_batch_wrapper_context(push_ref)
+            try:
+                output += await asyncio.to_thread(self._build_with_buildx, wrapper_context, batch_push_ref)
+            finally:
+                wrapper_context.unlink(missing_ok=True)
             exploit.build_output = output
-            exploit.docker_id = pull_ref
+            exploit.docker_id = batch_pull_ref
             exploit.docker_cmd = None
             exploit.status = LocalExploitStatus.FINISHED
         except Exception as exc:
@@ -391,6 +413,24 @@ class KubernetesExecutorBackend(ExecutorBackend):
             raise BackendError(output)
         return output
 
+    def _create_batch_wrapper_context(self, base_image: str) -> Path:
+        runner = Path(__file__).with_name("batch_runner.sh").read_bytes()
+        dockerfile = (
+            f"FROM {base_image}\n"
+            "COPY --chmod=0755 batch-runner.sh /usr/local/bin/ataka-batch-runner\n"
+            "ENTRYPOINT [\"/bin/sh\", \"/usr/local/bin/ataka-batch-runner\"]\n"
+        ).encode()
+        context = tempfile.NamedTemporaryFile(prefix="ataka-batch-", suffix=".tar", delete=False)
+        try:
+            with tarfile.open(fileobj=context, mode="w") as archive:
+                for name, content in (("Dockerfile", dockerfile), ("batch-runner.sh", runner)):
+                    info = tarfile.TarInfo(name)
+                    info.size = len(content)
+                    archive.addfile(info, io.BytesIO(content))
+        finally:
+            context.close()
+        return Path(context.name)
+
     def _buildx_env(self, kubeconfig: str) -> dict[str, str]:
         env = os.environ.copy()
         env["KUBECONFIG"] = kubeconfig
@@ -446,14 +486,30 @@ class KubernetesExecutorBackend(ExecutorBackend):
         )
         return str(config_path)
 
-    def _execution_pod_spec(self, pod_name: str, execution: LocalExecution, timeout_seconds: int):
+    def _execution_pod_spec(self, pod_name: str, executions: list[LocalExecution], timeout_seconds: int):
+        if not executions:
+            raise ValueError("an execution pod must contain at least one target")
+        exploit = executions[0].exploit
         client = self._client
         labels = {
             "app.kubernetes.io/name": "ataka-exploit-execution",
             "ataka.ad.tertsonen.xyz/component": "exploit-execution",
-            "ataka.ad.tertsonen.xyz/exploit-id": _k8s_name(execution.exploit.id, 48),
+            "ataka.ad.tertsonen.xyz/exploit-id": _k8s_name(exploit.id, 48),
             self.settings.vpn_label_key: self.settings.vpn_label_value,
         }
+        environment = [
+            client.V1EnvVar(name="ATAKA_CENTRAL_EXECUTION", value="TRUE"),
+            client.V1EnvVar(name="ATAKA_BATCH_SIZE", value=str(len(executions))),
+            client.V1EnvVar(name="ATAKA_EXPLOIT_ID", value=exploit.id),
+        ]
+        for index, execution in enumerate(executions):
+            environment.extend(
+                [
+                    client.V1EnvVar(name=f"ATAKA_EXECUTION_ID_{index}", value=str(execution.database_id)),
+                    client.V1EnvVar(name=f"ATAKA_TARGET_IP_{index}", value=execution.target.ip),
+                    client.V1EnvVar(name=f"ATAKA_TARGET_EXTRA_{index}", value=execution.target.extra or ""),
+                ]
+            )
         tolerations = []
         if self.settings.autoscaled_toleration_key:
             tolerations.append(
@@ -474,15 +530,10 @@ class KubernetesExecutorBackend(ExecutorBackend):
                 containers=[
                     client.V1Container(
                         name="exploit",
-                        image=execution.exploit.docker_id,
+                        image=exploit.docker_id,
                         image_pull_policy=self.settings.image_pull_policy,
                         working_dir="/exploit",
-                        env=[
-                            client.V1EnvVar(name="ATAKA_CENTRAL_EXECUTION", value="TRUE"),
-                            client.V1EnvVar(name="TARGET_IP", value=execution.target.ip),
-                            client.V1EnvVar(name="TARGET_EXTRA", value=execution.target.extra or ""),
-                            client.V1EnvVar(name="ATAKA_EXPLOIT_ID", value=execution.exploit.id),
-                        ],
+                        env=environment,
                         security_context=client.V1SecurityContext(
                             capabilities=client.V1Capabilities(add=["NET_RAW"])
                         ),
@@ -490,7 +541,7 @@ class KubernetesExecutorBackend(ExecutorBackend):
                             client.V1VolumeMount(
                                 name="persists",
                                 mount_path="/persist",
-                                sub_path=execution.exploit.docker_name,
+                                sub_path=exploit.docker_name,
                             ),
                             client.V1VolumeMount(name="shared", mount_path="/shared", sub_path="exploits"),
                         ],
@@ -513,45 +564,51 @@ class KubernetesExecutorBackend(ExecutorBackend):
             ),
         )
 
-    async def _run_execution(self, job_id: int, execution: LocalExecution, timeout: float, channel) -> LocalExecution:
-        suffix = hashlib.sha256(f"{job_id}-{execution.database_id}-{time.time_ns()}".encode()).hexdigest()[:10]
-        pod_name = _k8s_name(f"ataka-exec-{execution.database_id}-{suffix}", 63)
+    async def _run_batch(self, job_id: int, executions: list[LocalExecution], timeout: float, channel) -> list[LocalExecution]:
+        suffix = hashlib.sha256(
+            f"{job_id}-{executions[0].database_id}-{time.time_ns()}".encode()
+        ).hexdigest()[:10]
+        pod_name = _k8s_name(f"ataka-exec-{executions[0].database_id}-{suffix}", 63)
         timeout_seconds = _seconds_until(timeout)
-        pod = self._execution_pod_spec(pod_name, execution, timeout_seconds)
+        pod = self._execution_pod_spec(pod_name, executions, timeout_seconds)
         self._pods_by_job.setdefault(job_id, set()).add(pod_name)
         output_task = None
 
         try:
             await asyncio.to_thread(self._create_pod, pod)
             if not await self._wait_for_container_start(pod_name, timeout=timeout_seconds):
-                execution.status = JobExecutionStatus.TIMEOUT
-                execution.stderr += "<EXECUTOR TIMEOUT HAPPENED>"
-                return execution
+                for execution in executions:
+                    execution.status = JobExecutionStatus.TIMEOUT
+                    execution.stderr += "<EXECUTOR TIMEOUT HAPPENED>"
+                return executions
 
-            output_task = asyncio.create_task(self._stream_pod_logs(pod_name, execution, channel))
+            output_task = asyncio.create_task(self._stream_batch_pod_logs(pod_name, executions, channel))
             phase, reason = await self._wait_for_pod(pod_name, _seconds_until(timeout))
             await output_task
 
-            if execution.status == JobExecutionStatus.CANCELLED:
-                return execution
-            if phase == "Succeeded":
-                execution.status = JobExecutionStatus.FINISHED
-            elif reason == "DeadlineExceeded":
-                execution.status = JobExecutionStatus.TIMEOUT
-                execution.stderr += "<EXECUTOR TIMEOUT HAPPENED>"
-            else:
-                execution.status = JobExecutionStatus.FAILED
-                if not execution.stderr:
-                    execution.stderr = f"Exploit pod finished with phase={phase} reason={reason}"
-            return execution
+            for execution in executions:
+                if execution.status != JobExecutionStatus.RUNNING:
+                    continue
+                if phase == "Succeeded":
+                    execution.status = JobExecutionStatus.FAILED
+                    execution.stderr += "<EXECUTOR ERROR: batch runner returned no result>"
+                elif reason == "DeadlineExceeded":
+                    execution.status = JobExecutionStatus.TIMEOUT
+                    execution.stderr += "<EXECUTOR TIMEOUT HAPPENED>"
+                else:
+                    execution.status = JobExecutionStatus.FAILED
+                    execution.stderr += f"Exploit pod finished with phase={phase} reason={reason}"
+            return executions
         except asyncio.CancelledError:
-            execution.status = JobExecutionStatus.CANCELLED
-            execution.stderr += "<EXECUTOR CANCELLED>"
+            for execution in executions:
+                execution.status = JobExecutionStatus.CANCELLED
+                execution.stderr += "<EXECUTOR CANCELLED>"
             raise
         except Exception as exc:
-            execution.status = JobExecutionStatus.FAILED
-            execution.stderr += f"<EXECUTOR ERROR: {exc}>"
-            return execution
+            for execution in executions:
+                execution.status = JobExecutionStatus.FAILED
+                execution.stderr += f"<EXECUTOR ERROR: {exc}>"
+            return executions
         finally:
             self._pods_by_job.get(job_id, set()).discard(pod_name)
             await asyncio.to_thread(self._delete_pod, pod_name)
@@ -562,10 +619,13 @@ class KubernetesExecutorBackend(ExecutorBackend):
                     output_task.cancel()
                     await asyncio.gather(output_task, return_exceptions=True)
 
-    async def _stream_pod_logs(self, pod_name: str, execution: LocalExecution, channel):
+    async def _stream_batch_pod_logs(self, pod_name: str, executions: list[LocalExecution], channel):
         output_queue = await OutputQueue.get(channel)
         queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
+        execution_by_id = {execution.database_id: execution for execution in executions}
+        current_execution = None
+        partial_line = ""
 
         def read_logs():
             try:
@@ -591,10 +651,40 @@ class KubernetesExecutorBackend(ExecutorBackend):
                 output = await queue.get()
                 if output is None:
                     break
-                execution.stdout += output
-                await output_queue.send_message(OutputMessage(execution.database_id, True, output))
+                partial_line += output
+                while "\n" in partial_line:
+                    line, partial_line = partial_line.split("\n", 1)
+                    current_execution, output_message = self._process_batch_log_line(
+                        line, execution_by_id, current_execution
+                    )
+                    if output_message is not None:
+                        await output_queue.send_message(output_message)
+            if partial_line and current_execution is not None:
+                current_execution.stdout += partial_line
+                await output_queue.send_message(
+                    OutputMessage(current_execution.database_id, True, partial_line)
+                )
         finally:
             await reader
+
+    @staticmethod
+    def _process_batch_log_line(line, execution_by_id, current_execution):
+        start = re.fullmatch(r"__ATAKA_BATCH_START__:(\d+)", line.rstrip("\r"))
+        end = re.fullmatch(r"__ATAKA_BATCH_END__:(\d+):(\d+)", line.rstrip("\r"))
+        if start:
+            return execution_by_id.get(int(start.group(1))), None
+        if end:
+            execution = execution_by_id.get(int(end.group(1)))
+            if execution is not None:
+                execution.status = (
+                    JobExecutionStatus.FINISHED if end.group(2) == "0" else JobExecutionStatus.FAILED
+                )
+            return None, None
+        if current_execution is None:
+            return None, None
+        output = f"{line}\n"
+        current_execution.stdout += output
+        return current_execution, OutputMessage(current_execution.database_id, True, output)
 
     async def _wait_for_pod(self, pod_name: str, timeout: int) -> tuple[str, str]:
         deadline = time.time() + timeout

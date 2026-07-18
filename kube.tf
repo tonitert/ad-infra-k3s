@@ -729,7 +729,10 @@ module "kube-hetzner" {
   # k3s_global_kubelet_args = ["kube-reserved=cpu=100m,ephemeral-storage=1Gi", "system-reserved=cpu=memory=200Mi", "image-gc-high-threshold=50", "image-gc-low-threshold=40"]
   # k3s_control_plane_kubelet_args = []
   # k3s_agent_kubelet_args = []
-  k3s_autoscaler_kubelet_args = ["max-pods=330"]
+  # Apply the pod limit uniformly to control-plane, regular agent, and
+  # autoscaled agent nodes. The global setting is included in every node's
+  # persistent k3s config.
+  k3s_global_kubelet_args = ["max-pods=400"]
 
   # If you want to allow all outbound traffic you can set this to "false". Default is "true".
   # restrict_outbound_traffic = false
@@ -1072,6 +1075,18 @@ controller:
 defaultSettings:
   kubernetesClusterAutoscalerEnabled: true
   taintToleration: "ataka.ad.tertsonen.xyz/autoscaled=true:NoSchedule"
+longhornManager:
+  tolerations:
+    - key: ataka.ad.tertsonen.xyz/autoscaled
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+longhornDriver:
+  tolerations:
+    - key: ataka.ad.tertsonen.xyz/autoscaled
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
 persistence:
   defaultFsType: ext4
   defaultClassReplicaCount: 1
