@@ -133,7 +133,7 @@ module "kube-hetzner" {
   control_plane_nodepools = [
     {
       name        = "control-plane-hel1",
-      server_type = "cx33",
+      server_type = "cpx52",
       location    = "hel1",
       labels      = [],
       taints      = [],
@@ -729,7 +729,7 @@ module "kube-hetzner" {
   # k3s_global_kubelet_args = ["kube-reserved=cpu=100m,ephemeral-storage=1Gi", "system-reserved=cpu=memory=200Mi", "image-gc-high-threshold=50", "image-gc-low-threshold=40"]
   # k3s_control_plane_kubelet_args = []
   # k3s_agent_kubelet_args = []
-  # k3s_autoscaler_kubelet_args = []
+  k3s_autoscaler_kubelet_args = ["max-pods=330"]
 
   # If you want to allow all outbound traffic you can set this to "false". Default is "true".
   # restrict_outbound_traffic = false
@@ -1071,6 +1071,7 @@ controller:
   longhorn_values = <<EOT
 defaultSettings:
   kubernetesClusterAutoscalerEnabled: true
+  taintToleration: "ataka.ad.tertsonen.xyz/autoscaled=true:NoSchedule"
 persistence:
   defaultFsType: ext4
   defaultClassReplicaCount: 1

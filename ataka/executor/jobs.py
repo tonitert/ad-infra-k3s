@@ -31,10 +31,11 @@ class Jobs:
         self._backend = backend
         self._jobs = {}
         self._job_executions = {}
+        self._cancel_requested = set()
 
     async def poll_and_run_jobs(self):
         async with get_channel() as job_channel, get_channel() as cancel_channel:
-            prefetch_count = int(os.environ.get("EXECUTOR_PREFETCH", "1"))
+            prefetch_count = int(os.environ.get("EXECUTOR_MAX_CONCURRENT_JOBS", "1"))
             await job_channel.set_qos(prefetch_count=prefetch_count)
 
             await asyncio.gather(
@@ -44,36 +45,58 @@ class Jobs:
 
     async def _poll_job_queue(self, channel):
         job_queue = await JobQueue.get(channel)
+        max_concurrent_jobs = int(os.environ.get("EXECUTOR_MAX_CONCURRENT_JOBS", "1"))
+        if max_concurrent_jobs < 1:
+            raise ValueError("EXECUTOR_MAX_CONCURRENT_JOBS must be at least 1")
+        semaphore = asyncio.Semaphore(max_concurrent_jobs)
+        tasks = set()
 
-        async for job_message, raw_message in job_queue.wait_for_raw_messages():
-            if job_message.action != JobAction.QUEUE:
-                await raw_message.ack()
-                continue
+        def release_task(task):
+            tasks.discard(task)
+            semaphore.release()
 
-            job_execution = JobExecution(self._backend, channel, job_message.job_id)
-            task = asyncio.create_task(job_execution.run())
-            self._jobs[job_message.job_id] = task
-            self._job_executions[job_message.job_id] = job_execution
-
-            try:
-                terminal = await task
-            except asyncio.CancelledError:
-                if asyncio.current_task().cancelling():
-                    raise
-                terminal = await job_execution.cancel()
-            except Exception:
-                print(f"Unexpected executor failure for job {job_message.job_id}")
-                traceback.print_exc()
-                await raw_message.reject(requeue=True)
-            else:
-                if terminal:
+        try:
+            async for job_message, raw_message in job_queue.wait_for_raw_messages():
+                if job_message.action != JobAction.QUEUE:
                     await raw_message.ack()
-                else:
-                    await raw_message.reject(requeue=True)
-            finally:
-                if self._jobs.get(job_message.job_id) is task:
-                    self._jobs.pop(job_message.job_id, None)
-                    self._job_executions.pop(job_message.job_id, None)
+                    continue
+
+                await semaphore.acquire()
+                job_execution = JobExecution(self._backend, channel, job_message.job_id)
+                task = asyncio.create_task(self._run_job_message(job_message, raw_message, job_execution))
+                self._jobs[job_message.job_id] = task
+                self._job_executions[job_message.job_id] = job_execution
+                tasks.add(task)
+                task.add_done_callback(release_task)
+        except BaseException:
+            for task in tuple(tasks):
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+        else:
+            await asyncio.gather(*tasks)
+
+    async def _run_job_message(self, job_message, raw_message, job_execution):
+        try:
+            terminal = await job_execution.run()
+        except asyncio.CancelledError:
+            if job_message.job_id not in self._cancel_requested:
+                raise
+            terminal = await job_execution.cancel()
+        except Exception:
+            print(f"Unexpected executor failure for job {job_message.job_id}")
+            traceback.print_exc()
+            await raw_message.reject(requeue=True)
+        else:
+            if terminal:
+                await raw_message.ack()
+            else:
+                await raw_message.reject(requeue=True)
+        finally:
+            self._cancel_requested.discard(job_message.job_id)
+            if self._jobs.get(job_message.job_id) is asyncio.current_task():
+                self._jobs.pop(job_message.job_id, None)
+                self._job_executions.pop(job_message.job_id, None)
 
     async def _poll_cancel_queue(self, channel):
         cancel_queue = await JobCancelQueue.get(channel)
@@ -85,6 +108,7 @@ class Jobs:
             print(f"DEBUG: CURRENTLY RUNNING {len(self._jobs)}")
             task = self._jobs.get(job_message.job_id)
             if task is not None:
+                self._cancel_requested.add(job_message.job_id)
                 task.cancel()
 
 
@@ -180,6 +204,7 @@ class JobExecution:
         local_executions = {e.database_id: e for e in results}
         status = JobExecutionStatus.FAILED if any([e.status == JobExecutionStatus.FAILED for e in results]) \
             else JobExecutionStatus.CANCELLED if any([e.status == JobExecutionStatus.CANCELLED for e in results]) \
+            else JobExecutionStatus.TIMEOUT if any([e.status == JobExecutionStatus.TIMEOUT for e in results]) \
             else JobExecutionStatus.FINISHED
 
         # submit results to database

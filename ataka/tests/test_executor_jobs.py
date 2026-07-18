@@ -209,6 +209,49 @@ class ExecutorQueueTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(raw_message.acked)
         self.assertFalse(raw_message.rejected)
 
+    async def test_executor_runs_jobs_concurrently_up_to_configured_limit(self):
+        raw_messages = [FakeRawMessage(), FakeRawMessage()]
+        channel = FakeChannel()
+        channel.job_queue = FakeJobQueue([
+            (FakeJobMessage(JobAction.QUEUE, 46), raw_messages[0]),
+            (FakeJobMessage(JobAction.QUEUE, 47), raw_messages[1]),
+        ])
+        started = asyncio.Event()
+        release = asyncio.Event()
+        running = 0
+
+        class ConcurrentJobExecution:
+            def __init__(self, backend, channel, job_id):
+                self.job_id = job_id
+
+            async def run(self):
+                nonlocal running
+                running += 1
+                if running == 2:
+                    started.set()
+                await release.wait()
+                return True
+
+            async def cancel(self):
+                return True
+
+        executor_jobs.JobExecution = ConcurrentJobExecution
+        old_max_concurrent_jobs = os.environ.get("EXECUTOR_MAX_CONCURRENT_JOBS")
+        os.environ["EXECUTOR_MAX_CONCURRENT_JOBS"] = "2"
+        try:
+            scheduler = executor_jobs.Jobs(None)
+            poll_task = asyncio.create_task(scheduler._poll_job_queue(channel))
+            await started.wait()
+            release.set()
+            await poll_task
+        finally:
+            if old_max_concurrent_jobs is None:
+                os.environ.pop("EXECUTOR_MAX_CONCURRENT_JOBS", None)
+            else:
+                os.environ["EXECUTOR_MAX_CONCURRENT_JOBS"] = old_max_concurrent_jobs
+
+        self.assertTrue(all(message.acked for message in raw_messages))
+
     async def test_unexpected_failure_requeues_message(self):
         raw_message = FakeRawMessage()
         channel = FakeChannel()
@@ -368,7 +411,7 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
         backend._create_pod = lambda pod: None
         backend._delete_pod = lambda name: deleted.append(name)
         backend._wait_for_pod = wait_for_pod
-        backend._wait_for_container_start = lambda name, timeout: asyncio.sleep(0)
+        backend._wait_for_container_start = lambda name, timeout: asyncio.sleep(0, result=True)
         backend._stream_pod_logs = stream_logs
 
         exploit = LocalExploit(
@@ -385,6 +428,61 @@ class KubernetesBackendTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result.status, JobExecutionStatus.TIMEOUT)
         self.assertIn("<EXECUTOR TIMEOUT HAPPENED>", result.stderr)
+        self.assertTrue(deleted)
+
+    async def test_execution_that_never_starts_times_out_without_waiting_past_the_round(self):
+        backend = self.make_backend()
+        deleted = []
+
+        backend._create_pod = lambda pod: None
+        backend._delete_pod = lambda name: deleted.append(name)
+        backend._wait_for_container_start = lambda name, timeout: asyncio.sleep(0, result=False)
+
+        async def wait_for_pod(*args, **kwargs):
+            self.fail("a pod that did not start must not be waited on past its deadline")
+
+        backend._wait_for_pod = wait_for_pod
+
+        exploit = LocalExploit(
+            id="demo",
+            service="svc",
+            author="alice",
+            docker_name="demo-ctx",
+            status=LocalExploitStatus.FINISHED,
+            docker_id="ataka-registry.local/ataka-exploit/demo:abc",
+        )
+        execution = LocalExecution(9, exploit, LocalTarget("10.99.0.3"), JobExecutionStatus.RUNNING)
+
+        result = await backend._run_execution(100, execution, asyncio.get_running_loop().time() + 5, None)
+
+        self.assertEqual(result.status, JobExecutionStatus.TIMEOUT)
+        self.assertIn("<EXECUTOR TIMEOUT HAPPENED>", result.stderr)
+        self.assertTrue(deleted)
+
+    async def test_execution_api_error_is_reported_without_failing_the_whole_job(self):
+        backend = self.make_backend()
+        deleted = []
+
+        def create_pod(pod):
+            raise RuntimeError("Kubernetes API unavailable")
+
+        backend._create_pod = create_pod
+        backend._delete_pod = lambda name: deleted.append(name)
+
+        exploit = LocalExploit(
+            id="demo",
+            service="svc",
+            author="alice",
+            docker_name="demo-ctx",
+            status=LocalExploitStatus.FINISHED,
+            docker_id="ataka-registry.local/ataka-exploit/demo:abc",
+        )
+        execution = LocalExecution(10, exploit, LocalTarget("10.99.0.4"), JobExecutionStatus.RUNNING)
+
+        result = await backend._run_execution(101, execution, asyncio.get_running_loop().time() + 5, None)
+
+        self.assertEqual(result.status, JobExecutionStatus.FAILED)
+        self.assertIn("Kubernetes API unavailable", result.stderr)
         self.assertTrue(deleted)
 
 

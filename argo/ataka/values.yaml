@@ -8,6 +8,8 @@ ctf: enowars10
 
 executor:
   replicas: 1
+  maxReplicas: 1
+  maxConcurrentJobs: 4
   backend: kubernetes
   image: ghcr.io/tonitert/ad-infra-k3s/ataka-executor:latest
   serviceAccountName: ataka-executor

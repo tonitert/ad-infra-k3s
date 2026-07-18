@@ -519,12 +519,17 @@ class KubernetesExecutorBackend(ExecutorBackend):
         timeout_seconds = _seconds_until(timeout)
         pod = self._execution_pod_spec(pod_name, execution, timeout_seconds)
         self._pods_by_job.setdefault(job_id, set()).add(pod_name)
+        output_task = None
 
         try:
             await asyncio.to_thread(self._create_pod, pod)
-            await self._wait_for_container_start(pod_name, timeout=30)
+            if not await self._wait_for_container_start(pod_name, timeout=timeout_seconds):
+                execution.status = JobExecutionStatus.TIMEOUT
+                execution.stderr += "<EXECUTOR TIMEOUT HAPPENED>"
+                return execution
+
             output_task = asyncio.create_task(self._stream_pod_logs(pod_name, execution, channel))
-            phase, reason = await self._wait_for_pod(pod_name, timeout_seconds + 30)
+            phase, reason = await self._wait_for_pod(pod_name, _seconds_until(timeout))
             await output_task
 
             if execution.status == JobExecutionStatus.CANCELLED:
@@ -542,11 +547,20 @@ class KubernetesExecutorBackend(ExecutorBackend):
         except asyncio.CancelledError:
             execution.status = JobExecutionStatus.CANCELLED
             execution.stderr += "<EXECUTOR CANCELLED>"
-            await asyncio.to_thread(self._delete_pod, pod_name)
             raise
+        except Exception as exc:
+            execution.status = JobExecutionStatus.FAILED
+            execution.stderr += f"<EXECUTOR ERROR: {exc}>"
+            return execution
         finally:
             self._pods_by_job.get(job_id, set()).discard(pod_name)
             await asyncio.to_thread(self._delete_pod, pod_name)
+            if output_task is not None and not output_task.done():
+                try:
+                    await asyncio.wait_for(output_task, timeout=5)
+                except asyncio.TimeoutError:
+                    output_task.cancel()
+                    await asyncio.gather(output_task, return_exceptions=True)
 
     async def _stream_pod_logs(self, pod_name: str, execution: LocalExecution, channel):
         output_queue = await OutputQueue.get(channel)
@@ -596,7 +610,7 @@ class KubernetesExecutorBackend(ExecutorBackend):
             await asyncio.sleep(1)
         return "Failed", "DeadlineExceeded"
 
-    async def _wait_for_container_start(self, pod_name: str, timeout: int):
+    async def _wait_for_container_start(self, pod_name: str, timeout: int) -> bool:
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:
@@ -606,10 +620,11 @@ class KubernetesExecutorBackend(ExecutorBackend):
                     namespace=self.settings.namespace,
                 )
                 if pod.status.phase in ("Running", "Succeeded", "Failed"):
-                    return
+                    return True
             except Exception:
                 pass
             await asyncio.sleep(0.5)
+        return False
 
     def _create_pod(self, pod):
         try:
