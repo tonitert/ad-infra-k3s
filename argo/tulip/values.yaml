@@ -9,7 +9,44 @@ enowars:
   flagLifetime: -1
   flagIdParser: "enowars"
   attackInfoEndpoint: "https://10.enowars.com/scoreboard/attack.json"
-  # Add released service ports here when they are announced. Tulip still
-  # captures and displays unlisted traffic through the "other" entry.
-  services: []
+  services:
+    - ip: "10.1.15.1"
+      port: 1234
+      name: "mediocre"
+    - ip: "10.1.15.1"
+      port: 1980
+      name: "inbox"
+    - ip: "10.1.15.1"
+      port: 4321
+      name: "inbox"
+    - ip: "10.1.15.1"
+      port: 2553
+      name: "d3pl0y"
+    - ip: "10.1.15.1"
+      port: 7773
+      name: "greple"
+    - ip: "10.1.15.1"
+      port: 7777
+      name: "greple"
+    - ip: "10.1.15.1"
+      port: 7778
+      name: "greple"
+    - ip: "10.1.15.1"
+      port: 1337
+      name: "funsplash"
+    - ip: "10.1.15.1"
+      port: 5432
+      name: "Over Eats"
+    - ip: "10.1.15.1"
+      port: 6767
+      name: "superregister"
+    - ip: "10.1.15.1"
+      port: 1984
+      name: "SignMeMaybe"
+    - ip: "10.1.15.1"
+      port: 6789
+      name: "Leet-date"
+    - ip: "10.1.15.1"
+      port: 4859
+      name: "flagdrive"
   pcapRsyncSource: "root@178.104.144.161:/pcaps/"
